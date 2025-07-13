@@ -30,3 +30,32 @@ WHERE
 RETURN DISTINCT path
 
 // hasComponent?
+
+
+curl -X POST $REACTOME_NEO4J_URL $AUTH -H 'Content-Type: application/json' -d "$REQUEST" | jq . 
+QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..10]-(r) 
+    WHERE NONE(
+        x IN relationships(path) 
+        WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\", \"hasEncapsulatedEvent\"]
+    ) 
+    RETURN DISTINCT r'
+
+TODO: query that gets ancestors at any depth, but excludes encapsulated events, way faster, less useful
+MATCH path = ({dbId: 158754})<-[*]-()
+WHERE 
+    NONE (node in nodes(path) WHERE node.dbId IN [381937]) AND
+    NONE (relationship in relationships(path) WHERE type(relationship) IN ['author', 'modified', 'edited', 'authored', 'reviewed', 'created', 'updatedInstance', 'revised', 'replacementInstances', 'hasEncapsulatedEvent'])
+RETURN DISTINCT path
+
+find all the ancestors of tPA (PLAT, tissue plasminogen activator (one-chain)) up to depth 20
+REQUEST='
+{
+    "statements": [{
+        "statement": "MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..10]-(r) WHERE NONE(x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\", \"hasEncapsulatedEvent\"]) RETURN DISTINCT r",
+        "resultDataContents": ["graph"]
+    }]
+}
+'
+srun --pty singularity shell --writable-tmpfs --containall --cleanenv --pid docker://public.ecr.aws/reactome/graphdb:latest
+srun --pty singularity shell --writable-tmpfs -B /home/cicio_2048752/neo4j:/var/lib/neo4j docker://public.ecr.aws/reactome/graphdb:latest
+srun singularity run --writable-tmpfs --net --network none docker://public.ecr.aws/reactome/graphdb:latest

@@ -1,3 +1,9 @@
+    # TODO: use cypher-shell directly in interactive container!
+
+    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\", \"hasEncapsulatedEvent\"]) RETURN DISTINCT r'
+    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..17]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT r'
+    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..18]-(r) RETURN DISTINCT r'
+
 MATCH path = (n:PhysicalEntity)<-[*]-()
 WHERE 
     n.displayName CONTAINS 'PLAT' AND 

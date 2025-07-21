@@ -1,46 +1,42 @@
 #!/bin/bash
 
-drun=false # run locally with Docker
-srun=false # run on HPC cluster with slurm + singularity
-query_tests=false # run a demanding test query against the DB
+run_docker=false # run locally with Docker
+run_singularity=false # run on HPC cluster with slurm + singularity
+run_test=false # run a demanding test query against the database
 
-while getopts ":dqs" option; do
+while getopts dst option; do
     case $option in
-        d) drun=true;;
-        q) query_tests=true;;
-        s) srun=true;;
+        d) run_docker=true;;
+        s) run_singularity=true;;
+        t) run_test=true;;
     esac
 done
 
-if $drun; then
+if $run_docker; then
     docker run -p 7474:7474 -p 7687:7687 -e NEO4J_dbms_memory_heap_maxSize=8g public.ecr.aws/reactome/graphdb:latest
 fi
 
-if $srun; then
+if $run_singularity; then
     srun --pty singularity shell -u --overlay overlay.img docker://public.ecr.aws/reactome/graphdb:latest
 fi
 
-if $query_tests; then 
-    REACTOME_NEO4J_URL='http://localhost:7474/db/data/transaction/commit'
-    AUTH='-u neo4j:neo4j'
+NEO4J_URL_REACTOME='http://localhost:7474/db/data/transaction/commit'
+AUTH='-u neo4j:neo4j'
 
-    # TODO: use cypher-shell directly in interactive container!
+NEO4J_REQUEST="
+{
+    \"statements\": [
+        {
+            \"statement\": \"$QUERY\",
+            \"resultDataContents\": [ \"graph\"]
+        }
+    ]
+}
+"
 
-    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\", \"hasEncapsulatedEvent\"]) RETURN DISTINCT r'
-    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..17]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT r'
-    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..18]-(r) RETURN DISTINCT r'
-    QUERY='EXPLAIN MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..16]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT r'
-    REQUEST="
-    {
-        \"statements\": [
-            {
-                \"statement\": \"$QUERY\",
-                \"resultDataContents\": [ \"row\"]
-            }
-        ]
-    }
-    "
+if $run_test; then 
+    QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..2]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT path'
 
-    curl -X POST $REACTOME_NEO4J_URL $AUTH -H 'Content-Type: application/json' -d "$REQUEST" | jq . 
+    curl -X POST $NEO4J_URL_REACTOME $AUTH -H 'Content-Type: application/json' -d "$NEO4J_REQUEST" | jq . 
 fi
 

@@ -1,8 +1,6 @@
 from typing import TypeAlias
 from collections import UserString
 
-# StandardId: TypeAlias = str
-
 
 class StandardId(UserString):
     def __init__(self, value) -> None:

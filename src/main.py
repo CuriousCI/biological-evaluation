@@ -81,7 +81,7 @@ def create_simple_model(
 
 def query(driver: neo4j.Driver) -> list[Any]:
     # CROSSLINKED_FIBRIN_MULTIMER_REACTION_DB_ID = 158750
-    PAT_DB_ID = 158754
+    PLAT_DB_ID = 158754
 
     # records, summary, keys
     # ReactionLikeEvent -> converts inputs to outputs
@@ -117,7 +117,7 @@ def query(driver: neo4j.Driver) -> list[Any]:
         } 
         RETURN reaction.stId AS stId, reaction.displayName AS displayName, labels(reaction), reactants, products 
         """,
-        dbId=PAT_DB_ID,
+        dbId=PLAT_DB_ID,
         database_=REACTOME_DATABASE,
     )
 

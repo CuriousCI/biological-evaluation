@@ -15,6 +15,7 @@ import model
 class BlackBoxSBML(BlackBox):
     def __init__(self, parameters: set[model.PhysicalEntityStandardId]) -> None:
         self.rr = RoadRunnerEngine()
+
         self.rr_model: Model = Model(
             sim_engine=self.rr,
             model_filename='test.sbml',

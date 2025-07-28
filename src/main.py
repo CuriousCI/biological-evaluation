@@ -3,6 +3,7 @@
 Tool to determine the plausability of biological systems states through virtual witnesses.
 """
 
+import petab
 import random
 import sys
 from typing import Any
@@ -189,6 +190,12 @@ if __name__ == '__main__':
 
     if document is None:
         sys.exit(1)
+
+    composite_problem: petab.v1.CompositeProblem = petab.v1.CompositeProblem.from_yaml(
+        './model/model.yaml'
+    )
+
+    print(composite_problem)
 
     with open('test.sbml', 'w') as file:
         file.write(document)

@@ -1,9 +1,16 @@
-    # TODO: use cypher-shell directly in interactive container!
+1. `QUERY='MATCH path = (n {dbId: 158754})<-[*..12]-(r:PhysicalEntity) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT r'`
+2. `QUERY='MATCH path = (n {dbId: 158754})<-[*..12]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT r'`
 
-    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\", \"hasEncapsulatedEvent\"]) RETURN DISTINCT r'
-    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..17]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT r'
-    # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..18]-(r) RETURN DISTINCT r'
+2. è più veloce, e da più oggetti
 
+
+<!-- # TODO: use cypher-shell directly in interactive container! -->
+<!---->
+<!-- # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\", \"hasEncapsulatedEvent\"]) RETURN DISTINCT r' -->
+<!-- # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..17]-(r) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT r' -->
+<!-- # QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..18]-(r) RETURN DISTINCT r' -->
+
+```cql
 MATCH path = (n:PhysicalEntity)<-[*]-()
 WHERE 
     n.displayName CONTAINS 'PLAT' AND 
@@ -65,3 +72,4 @@ REQUEST='
 srun --pty singularity shell --writable-tmpfs --containall --cleanenv --pid docker://public.ecr.aws/reactome/graphdb:latest
 srun --pty singularity shell --writable-tmpfs -B /home/cicio_2048752/neo4j:/var/lib/neo4j docker://public.ecr.aws/reactome/graphdb:latest
 srun singularity run --writable-tmpfs --net --network none docker://public.ecr.aws/reactome/graphdb:latest
+```

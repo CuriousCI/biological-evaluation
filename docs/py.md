@@ -1,4 +1,52 @@
 ```python
+# rr = RoadRunnerEngine()
+# rr_model: Model = Model(
+#     sim_engine=rr,
+#     model_filename='test.sbml',
+#     abs_tol=1.0,
+#     rel_tol=1.0,
+#     time_step=1.0,
+# )
+# trajectory: dict[str, list[float]] = rr.simulate_trajectory(
+#     rr_model, horizon=10000.0
+# )
+
+
+# for key, val in trajectory.items():
+#     print(key)
+#     print(val)
+
+# set(map(lambda e: e.standard_id, physical_entities))
+
+# TODO: simulate until reaching equilibrium
+
+# rr_instance: ModelInstance = rr.load_model('test.sbml')
+# rr_instance.set_parameter('par1', 15.5)
+
+#     pass
+# print(trajectory)
+
+# with open('test.sbml', 'w') as file:
+#     file.write(document)
+#
+# rr = roadrunner.RoadRunner('./test.sbml')
+# result = rr.simulate(
+#     0,
+#     10,
+#     1000,
+#     ['time']
+#     + list(
+#         map(
+#             lambda physical_entity: str(physical_entity.standard_id),
+#             physical_entities,
+#         )
+#     ),
+# )
+# rr.plot(result=result, loc='upper left')
+```
+
+
+```python
  def check(value, message):
    """If 'value' is None, prints an error message constructed using
    'message' and then exits with status code 1.  If 'value' is an integer,

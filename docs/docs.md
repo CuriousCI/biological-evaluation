@@ -3,3 +3,7 @@ https://sbml.org/software/libsbml/5.18.0/docs/formatted/python-api/libsbml-pytho
 https://reactome.github.io/reactome2py/
 https://download.reactome.org/documentation/DataModelGlossary_V90.pdf
 https://raw.githubusercontent.com/combine-org/combine-specifications/main/specifications/files/sbml.level-3.version-2.core.release-2.pdf
+https://reactome.org/content/schema/DatabaseObject
+https://petab.readthedocs.io/en/latest/index.html
+https://petab.readthedocs.io/en/latest/v1/tutorial/tutorial.html
+https://bitbucket.org/mclab/apricopt/src

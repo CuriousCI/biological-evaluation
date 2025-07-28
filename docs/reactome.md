@@ -5,6 +5,9 @@
 - [Data Model Glossary](https://download.reactome.org/documentation/DataModelGlossary_V90.pdf)
 - [Neo4j & Cypher Query Language](https://neo4j.com/developer/cypher-query-language/)
 
+- ReactionLikeEvent -> converts inputs to outputs
+- Pathway -> grouping of events
+
 PAPERS/ARTICLES:
 - [neo4j efficient queries](https://pmc.ncbi.nlm.nih.gov/articles/PMC5805351/)
 

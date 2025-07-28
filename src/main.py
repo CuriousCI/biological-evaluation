@@ -1,10 +1,15 @@
+"""bsys-eval
+
+Tool to determine the plausability of biological systems states through virtual witnesses.
+"""
+
 import random
 import sys
 from typing import Any
 
 import libsbml
 import neo4j
-import roadrunner
+from apricopt.solving.blackbox.NOMAD.NOMADSolver import NOMADSolver
 from libsbml import (
     SBMLDocument,
     parseL3Formula,
@@ -13,6 +18,7 @@ from libsbml import (
 from neo4j import GraphDatabase
 
 import model
+import optimization
 
 NEO4J_URL_REACTOME = 'neo4j://localhost:7687'
 AUTH = ('noe4j', 'neo4j')
@@ -84,15 +90,14 @@ def query(driver: neo4j.Driver) -> list[Any]:
     PLAT_DB_ID = 158754
 
     # records, summary, keys
-    # ReactionLikeEvent -> converts inputs to outputs
-    # Pathway -> grouping of events
     records, _, _ = driver.execute_query(
         """
         MATCH path = (n {dbId: $dbId})<-[*..3]-(reaction:ReactionLikeEvent)
         WHERE NONE( 
             relationship IN relationships(path) 
             WHERE type(relationship) IN [
-                'author', 'modified', 'edited', 'authored', 'reviewed', 'created', 'updatedInstance', 'revised', 'inferredTo'
+                'author', 'modified', 'edited', 'authored', 'reviewed', 
+                'created', 'updatedInstance', 'revised', 'inferredTo'
             ]
         )
         CALL { 
@@ -115,7 +120,9 @@ def query(driver: neo4j.Driver) -> list[Any]:
                 order: relationship.order 
             }) AS products
         } 
-        RETURN reaction.stId AS stId, reaction.displayName AS displayName, labels(reaction), reactants, products 
+        RETURN 
+            reaction.stId AS stId, reaction.displayName AS displayName, 
+            reactants, products 
         """,
         dbId=PLAT_DB_ID,
         database_=REACTOME_DATABASE,
@@ -135,8 +142,8 @@ if __name__ == '__main__':
             print(exception)
             sys.exit(1)
 
-        physical_entities = set()
-        reactions = list()
+        physical_entities: set[model.PhysicalEntity] = set()
+        reactions: list[model.ReactionLikeEvent] = list()
 
         for reaction in map(lambda reaction: reaction.data(), fibrin_results):
             physical_entities = physical_entities.union(
@@ -186,17 +193,11 @@ if __name__ == '__main__':
     with open('test.sbml', 'w') as file:
         file.write(document)
 
-    rr = roadrunner.RoadRunner('./test.sbml')
-    result = rr.simulate(
-        0,
-        10,
-        1000,
-        ['time']
-        + list(
-            map(
-                lambda physical_entity: str(physical_entity.standard_id),
-                physical_entities,
-            )
-        ),
+    black_box: optimization.BlackBoxSBML = optimization.BlackBoxSBML(
+        set(map(lambda e: e.standard_id, physical_entities))
     )
-    rr.plot(result=result, loc='upper left')
+
+    solver = NOMADSolver()
+    solver_params = {'solver_params': []}
+    result = solver.solve(black_box, solver_params)
+    print(result)

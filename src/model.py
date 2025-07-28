@@ -1,9 +1,21 @@
+"""
+model stuff
+"""
+
 from typing import TypeAlias
 from collections import UserString
+from dataclasses import dataclass
 
 
+# [SBML 3.2.2 | ch. 3.1.7]
 class StandardId(UserString):
+    """Class docstrings go here."""
+
     def __init__(self, value) -> None:
+        """Method docstrings go here."""
+        # a..z A..Z
+        # 0..9
+        # (letter | _) 'a..z A..Z 0..9' *
         super().__init__(value.replace('-', '_'))
 
 
@@ -17,10 +29,10 @@ class RationalGT0(float):
         float.__init__(value)
 
 
+@dataclass(repr=False, eq=False, frozen=True)
 class PhysicalEntity:
-    def __init__(self, standard_id: StandardId, display_name: str) -> None:
-        self.standard_id = standard_id
-        self.display_name = display_name
+    standard_id: StandardId
+    display_name: str
 
     def __hash__(self) -> int:
         return self.standard_id.__hash__()

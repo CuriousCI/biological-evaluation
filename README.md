@@ -10,6 +10,9 @@ pip install libroadrunner
 pip install neo4j
 pip install python-libsbml
 pip install PyQt5
+pip install apricopt
+pip install PyNomadBBO
+pip install petab
 ```
 
 ## experiment

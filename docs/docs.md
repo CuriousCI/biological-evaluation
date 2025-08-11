@@ -7,3 +7,6 @@ https://reactome.org/content/schema/DatabaseObject
 https://petab.readthedocs.io/en/latest/index.html
 https://petab.readthedocs.io/en/latest/v1/tutorial/tutorial.html
 https://bitbucket.org/mclab/apricopt/src
+
+
+https://neo4j.com/docs/operations-manual/current/performance/

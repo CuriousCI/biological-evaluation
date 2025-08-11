@@ -1,0 +1,23 @@
+AbstractModifiedResidue  (ReferenceSequence)
+ReplacedResidue (PsiMod)
+ModifiedNucleotide (DatabaseObject)
+TranslationalModification (PsiMod)
+CrosslinkedResidue (EntitySet, Polymer, ReferenceGroup)
+InterChainCrosslinkedResidue (stuff...)
+GroupModifiedResidue (EntitySet, Polymer, ReferenceGroup)
+CatalystActivity (stuff...)
+ControlReference (Publication)
+CatalystActivityReference (CatalystActivity)
+MarkerReference (Cell, EntityWithAccessionedSequence)
+RegulationReference (Regulation)
+EntityFunctionalStatus (stuff...)
+
+
+ReferenceEntity (guacamole)
+ReferenceSequence (Species)
+ReferenceGeneProduct (stuff...)
+ReferenceIsoform (stuff...)
+ReferenceRNASequence (ReferenceDNASequence)
+
+
+Regulation (HOLY SHIT x4)

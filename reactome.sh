@@ -1,98 +1,106 @@
 #!/bin/bash
 
-# Build reactome.sif image to run container.
-build_singularity_image=false 
+# Build reactome.sif image to run container
+build_reactome_sif=false 
 
-# Run on HPC cluster with slurm + singularity. 
-# Requires reactome.sif image to be built.
-run_slurm_singularity_image=false 
+# Run on HPC cluster with slurm + singularity
+# Requires reactome.sif image to be built (./reactome.sh -b)
+run_reactome_sif_with_slurm_interactive=false 
 
-# Run reactome container locally with Docker.
-run_local_docker_image=false 
+# Run reactome container locally with Docker
+run_reactome_locally_with_docker=false 
 
-# Run a test query using curl.
-run_curl_query=false 
+# Run a query using cypher-shell within a running container
+exec_cypher_query=false
 
-# Run a test query using cypher-shell within a running container.
-run_cypher_query=false
-
-# Run query with a srun job and save results. 
+# Run query with a srun job and save results
 submit_job=false
 
-# File containing the cypher query.
+# File containing the cypher query
 cypher_file=''
 
-while getopts bcdstj: option; do
+# File in which to store a job logs
+log_file='job.log'
+
+# File in which to store the results of a query
+out_file=''
+
+while getopts bc:dl:o:qsj: option; do
     case $option in
-        b) build_singularity_image=true;;
-        s) run_slurm_singularity_image=true;;
+        b) build_reactome_sif=true;;
+        s) run_reactome_sif_with_slurm_interactive=true;;
+        d) run_reactome_locally_with_docker=true;;
 
-        d) run_local_docker_image=true;;
+        c) exec_cypher_query=true; cypher_file="$OPTARG";;
+        j) submit_job=true; cypher_file="$OPTARG";;
 
-        # TODO: cypher_file for curl_query too, it has to be optional;
-        t) run_curl_query=true;;
-
-        # TODO: cypher_file for cypher_query too, it has to be optional;
-        c) run_cypher_query=true;;
-
-        j) submit_job=true
-            cypher_file="$OPTARG";;
+        l) log_file="$OPTARG";;
+        o) out_file="$OPTARG";;
     esac
 done
 
-if $build_singularity_image; then
+if $build_reactome_sif; then
     singularity build --sandbox reactome.sif docker://public.ecr.aws/reactome/graphdb:latest
 fi
 
-if $run_slurm_singularity_image; then
-    srun --pty singularity shell --userns --writable reactome.sif 
+if $run_reactome_sif_with_slurm_interactive; then
+    srun --pty singularity shell --writable reactome.sif 
 fi
 
-if $run_local_docker_image; then
-    docker run -p 7474:7474 -p 7687:7687 -e NEO4J_dbms_memory_heap_maxSize=4g public.ecr.aws/reactome/graphdb:latest
+if $run_reactome_locally_with_docker; then
+    docker run -p 7474:7474 -p 7687:7687  public.ecr.aws/reactome/graphdb:latest
 fi
 
 
-NEO4J_URL_REACTOME='http://localhost:7474/db/data/transaction/commit'
-AUTH='-u neo4j:neo4j'
+exec_query() {
+    cypher-shell --debug -u neo4j -p neo4j --format verbose "$1"
+}
 
-if $run_curl_query; then 
-    QUERY='MATCH path = (n {dbId: 158754})<-[*..12]-(r) RETURN DISTINCT r'
+exec_query_file() {
+    cypher-shell --debug -u neo4j -p neo4j --format verbose --file $1 
+}
 
-NEO4J_REQUEST="
-{
-    \"statements\": [
-        {
-            \"statement\": \"$QUERY\",
-            \"resultDataContents\": [ \"row\"]
+if $exec_cypher_query; then 
+    {
+        time {
+            touch /var/lib/neo4j/logs/neo4j.log
+
+            export HEAP_SIZE=128g
+            # export NEO4J_CONF='./neo4j.conf'
+
+            neo4j start
+            neo4j status
+
+            iteration=1
+            while ! (echo > /dev/tcp/localhost/7687) 2>/dev/null; do 
+                sleep 1; 
+                echo "... $iteration"
+                iteration=$((iteration + 1))
+            done
         }
-    ]
-}
-"
+    } 2> $log_file 
 
-    curl -X POST $NEO4J_URL_REACTOME $AUTH -H 'Content-Type: application/json' -d "$NEO4J_REQUEST" | jq '.results.[0].data' 
-fi
+    {
+        if [ -z "$out_file" ]; then 
+            out_file="$cypher_file.out"
+        fi
 
-query() {
-    cypher-shell -u neo4j -p neo4j --format verbose "$1" | tail -n 1
-}
-
-if $run_cypher_query; then 
-    query "MATCH path = (n {dbId: 158754})<-[*..12]-(r:PhysicalEntity) WHERE NONE(x IN relationships(path) WHERE type(x) IN ['author', 'modified', 'edited', 'authored', 'reviewed', 'created', 'updatedInstance', 'revised']) RETURN DISTINCT r"
+        time exec_query_file $cypher_file > $out_file
+    } 2>> $log_file 
 fi
 
 if $submit_job; then
-    # basically
-    # 1. run container 
-    # 2. start a script within the container, in which
-    # 3. create the log file to solve permission problem 
-    # 4. 'neo4j start' in background
-    # 5. while loop that waits until 'neo4j status' returns the port / valid info
-    # 6. run the query
-    # 7. save the results in a file (matching the query file name or stuff like that, even just giving the name as an argument, and give it a default value)
-    # 8. everyone happy!!
+    srun singularity run --writable reactome.sif ./reactome.sh -c $cypher_file -o $out_file -l $log_file
 fi
 
-# QUERY='MATCH path = (n {dbId: 158754})<-[*..12]-(r:PhysicalEntity) WHERE NONE( x IN relationships(path) WHERE type(x) IN [\"author\", \"modified\", \"edited\", \"authored\", \"reviewed\", \"created\", \"updatedInstance\", \"revised\"]) RETURN DISTINCT r'
-# QUERY='MATCH path = (n:PhysicalEntity {dbId: 158754})<-[*..17]-(r) WHERE ALL( x IN relationships(path) WHERE type(x) IN [\"input\", \"output\"]) RETURN DISTINCT r'
-# QUERY='MATCH (n:PhysicalEntity {dbId: 158754})<-[*..17]-(r:ReactionLikeEvent) RETURN DISTINCT r'
+# TODO: job name based on query
+# TODO: --additional-config??? Maybe not needed
+# TODO: possibly log execution time, maybe use 'tee'
+# neo4j-admin 
+# NEO4J_CONF    Path to directory which contains neo4j.conf.
+# NEO4J_DEBUG   Set to anything to enable debug output.
+# NEO4J_HOME    Neo4j home directory.
+# HEAP_SIZE     Set JVM maximum heap size during command execution. Takes a number and a unit, for example 512m.
+# 31G suggested
+# let's try 128G
+

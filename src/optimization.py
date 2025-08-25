@@ -10,6 +10,7 @@ import model
 
 # TODO: simulate until equilibrium
 # TODO: parallelize on cluster
+# who would have guessed, we can't do that?
 
 
 class BlackBoxSBML(BlackBox):

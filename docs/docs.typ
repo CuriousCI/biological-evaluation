@@ -78,6 +78,8 @@ to find a subset of virtual patients for the situation.
 
 The algorithm
 
+#TODO[better notation here, write something decent to introduce the algorithm]
+
 #box(
     stroke: (y: .25pt),
     inset: (y: .5em),

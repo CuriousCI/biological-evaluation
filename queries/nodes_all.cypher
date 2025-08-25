@@ -1,3 +1,2 @@
 MATCH (n)
 RETURN n.dbId
-LIMIT 100000

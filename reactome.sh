@@ -28,7 +28,10 @@ log_file=''
 # File in which to store the results of a query (requires out file)
 out_file=''
 
-while getopts bc:dl:o:q:sj: option; do
+# Job id to wait before launching the next batch job
+jobid_to_wait_for=''
+
+while getopts bc:dl:o:q:sj:w: option; do
     case $option in
         b) build_reactome_sif=true;;
         s) run_reactome_sif_with_slurm_interactive=true;;
@@ -37,6 +40,7 @@ while getopts bc:dl:o:q:sj: option; do
         c) exec_cypher_query=true; cypher_file="$OPTARG";;
         j) submit_job=true; cypher_file="$OPTARG";;
         q) submit_batch_job=true; cypher_file="$OPTARG";;
+        w) jobid_to_wait_for="$OPTARG";;
 
         l) log_file="$OPTARG";;
         o) out_file="$OPTARG";;
@@ -109,7 +113,7 @@ if $submit_job; then
     fi
 
     basename="$(basename $cypher_file '.cypher')"
-    srun -J $basename singularity run --writable reactome.sif ./reactome.sh "${args[@]}"
+    srun -J "reactome_$basename" --partition multicore --mem 131072 singularity run --writable reactome.sif ./reactome.sh "${args[@]}"
 fi
 
 if $submit_batch_job; then
@@ -128,7 +132,15 @@ if $submit_batch_job; then
     echo "#!/bin/bash" > temp.job
     echo "singularity run --writable reactome.sif ./reactome.sh ${args[@]}" >> temp.job
     chmod +x temp.job
-    sbatch -J $basename temp.job 
+
+    sbatch_args=()
+    if [ -n "$jobid_to_wait_for" ]; then
+        sbatch_args+=( "-w $jobid_to_wait_for" )
+    fi
+
+    sbatch -J "reactome_$basename" --partition multicore --mem 131072 temp.job "${sbatch_args[@]}"
 fi
 
 # TODO: print cypher query results in JSON
+# TODO: total memory required calculated (total number of GBs calculated from variables, then multiplied by 1024, and saved to file as settings)
+# TODO: find a way to expand additional args passed to script directly to the command 

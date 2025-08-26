@@ -19,7 +19,7 @@
 // #let class-color = black
 // #let keyword-color = black
 
-#let keyword-weight = "bold"
+#let keyword-weight = 600
 
 #let to-string(it) = {
     if type(it) == str {
@@ -82,7 +82,8 @@
     show regex("[A-Z]\w+"): set text(
         class-color,
         // font: "Latin Modern Mono Caps",
-        font: "LMMonoCaps10",
+        // font: "LMMonoCaps10",
+        font: "LMMonoLt10",
         style: "normal",
         weight: keyword-weight,
     )

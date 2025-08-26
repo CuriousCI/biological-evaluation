@@ -228,7 +228,8 @@ Average quantities
 - #logic[```js \w = /[A-Za-z0-9_]/```]
 
 #logic[ReactomeDbId = Integer] @reactome-DatabaseObject\
-#logic[StableId = String matching regex ```js /^R-[A-Z]{3}-\d{8}\.\d{2,3}$/```]
+#logic[StableIdVersion (Reactome) = \
+    ~ String matching regex ```js /^R-[A-Z]{3}-\d{8}\.\d{2,3}$/```]
 @reactome-faq-identifiers \
 #logic[SId = String matching regex ```js /^[a-zA-Z_]\w*$/```]
 #ref(
@@ -343,6 +344,31 @@ the active unit of the #logic[CatalystActivity]." #ref(
 
 == Compartment
 
+#TODO[move this information to the #logic[_compartment_entity_] association, or
+    to #logic[PreferredCompartmentForSimulation]]
+
+The #logic[Compartment] class has some quirks. In Reactome, the
+#logic[Compartment]'s role in the #logic[_compartment_entity_] association has
+multiplicity #logic[0..\*]. The problem is that the SBML model requires
+#logic[1..1] multiplicity for this association to be simulated.
+
+In Reactome there are currently (TODO: version??) 19 physical entities which
+don't have a compartment (see queries/helper.cypher), so this can be easily
+solved by just adding a *default compartment* to the SBML model to which these
+entities map to.
+
+On the other hand there are 14046 entities which have multiple compartments
+(TODO: how many compartments has each exactly?), so the easiest choice right now
+is to just pick any of them. For this reason the
+
+
+// TODO: actual model requires 1..1 compartments
+//
+// - if no compartment is present just use a default one
+// - if multiple compartments are present use whichever you want (for now)
+
+
+
 == Event
 
 == FastReaction
@@ -426,8 +452,7 @@ TODO: how should I handle complexes here?
         ReactionLikeEvent(reaction) and
         *output*(this, reaction) and
         not exists pathway
-            IgnoredPathway(pathway) and
-            reactions(pathway, reaction)
+            IgnoredPathway(pathway) and reactions(pathway, reaction)
     }
     ```,
 )
@@ -448,7 +473,10 @@ TODO: union with #logic[CatalystActivity]
                 (exists catalyst_activity
                     CatalystActivity(catalyst_activity) and
                     *catalyzed_event*(catalyst_activity, reaction)) and
-                    *catalyst_entity*(catalyst_activity, reaction_input)
+                    *catalyst_entity*(
+                        catalyst_activity,
+                        reaction_input
+                    )
             ) and
             fixed_point(reaction_input, object)
         }

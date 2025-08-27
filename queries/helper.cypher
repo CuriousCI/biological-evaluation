@@ -45,3 +45,8 @@ RETURN DISTINCT (labels(n));
 // ["DatabaseObject", "Deletable", "Regulation", "NegativeRegulation", "NegativeGeneExpressionRegulation"]
 // ["DatabaseObject", "Deletable", "Regulation", "NegativeRegulation"]
 // ["DatabaseObject", "Deletable", "PositiveRegulation", "Regulation", "Requirement"]
+
+// MAX LENGTH OF A PATH FROM PATHWAY TO REACTION
+MATCH path = (r:ReactionLikeEvent)<-[:hasEvent*12..]-(p:Pathway)
+RETURN path
+LIMIT 1

@@ -32,7 +32,6 @@ The goal of the Reactome knowledgebase is to represent human biological processe
 - Knowledge is captured as instances of these classes (e.g., “glucose transport across the plasma membrane”, “cytosolic ATP”)
 - slots that hold properties of the instances (e.g., the identities of the molecules that participate as inputs and outputs in a reaction)
 
-TODO: 
 - next https://reactome.org/documentation/data-model
 - https://neo4j.com/docs/cypher-manual/current/introduction/
 

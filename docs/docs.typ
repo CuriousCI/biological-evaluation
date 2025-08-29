@@ -32,7 +32,6 @@
 #let proj-name = text(font: "LMMonoCaps10", "Bsys_eval")
 #let TODO(body) = box(fill: rgb("#f5f5f5"), inset: .75em)[
     #text(font: "LMMonoCaps10", "TODO"): #body
-
 ]
 
 #page(align(center + horizon, {
@@ -59,9 +58,10 @@ a biological system.
 
 Given a set of _target species_, a set of constraints on the _target species_
 (constraints which model a situation that could present, for example, in a
-disease) and by taking into account all the reactions that lead to the
-production, both directly and indirectly, of the _target species_, the goal is
-to find a subset of virtual patients for the situation.
+disease) and by taking into account all the reactions within a set _target
+    pathways_ that lead to the production, both directly and indirectly, of the
+_target species_, the goal is to find a subset of virtual patients for the
+described situation.
 
 #TODO[
     find papers in literature that do similar things; what does this method add
@@ -69,28 +69,54 @@ to find a subset of virtual patients for the situation.
     the fixed point, ensemble of SAs etc...)
 ]
 
-#TODO[
-    add case study, multiple if possible
-]
+#TODO[add case study, multiple if possible]
+
+#pagebreak()
 
 == Requirements
 
+The basic idea behind the software is to take the description of a model (with
+_target species_, _target pathways_, constraints on the _target species_, and
+the parameters $epsilon, delta in (0, 1)$ for the evalation of the constraints),
+to generate a SBML model with
+- all the reactions within the _target pathways_ that, both directly and
+    indirectly, generate the _target species_
+- parameters for the reactions' speeds
+- structural constraints on the reactions' speeds (some reactions are faster
+    than others) #TODO[I still haven't figured out how to get that information
+        out of Reactome, maybe I just have to search more]
+- constraints on the quantities of the entities (for which the model needs to be
+    simulated)
 
-The algorithm
+#TODO[
+    possibly take a configuration file as input, maybe PEtab could be good,
+    otherwise `JSON` should be enough, as everything else is generated
+    automatically from Reactome, the model should work with both StableIDVersion
+    and ReactomeDbId;
 
-#TODO[better notation here, write something decent to introduce the algorithm]
+    The #logic[TargetPathway]s should be optional. The ExtraConstraints should
+    be optional. The PreferredCompartmentForSimulation could be specified.
+]
+
+
+// Fixed point
+//
+
+// The algorithm
+//
+// #TODO[better notation here, write something decent to introduce the algorithm]
 
 #box(
     stroke: (y: .25pt),
     inset: (y: .5em),
     width: 100%,
-    [ *Algorithm 1*: (high level pseudocode)],
+    [ *Algorithm 1*: eval],
 )
 #box(stroke: (bottom: .25pt), inset: (bottom: 1em))[
     #indent-block(logic[
         *input*: $S_T$, set of PhysicalEntity; \
         *input*: $C_T$, set of constraints on $S_T$; \
-        *input*: $P_I$, set of ignored pathways; \
+        *input*: $P_I$, set of target pathways; \
         *input*: $epsilon, delta in (0, 1)$; \
         *input*: seed, random seed; \
 

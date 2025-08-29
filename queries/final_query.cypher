@@ -60,9 +60,6 @@ WHERE
   )
 RETURN COUNT(path);
 
-// TODO: find some species to expand within signal transduction
-
 // Interesting "species" or components within a signal transduction pathway include ligands (signaling molecules), receptors (like G-protein coupled receptors), second messengers (such as cAMP), kinases and phosphatases (enzymes that add or remove phosphate groups), G proteins (like Ras), and transcription factors. These molecules initiate, relay, and amplify signals, leading to changes in cellular behavior like growth, metabolism, or immune response, depending on the specific pathway involved
 
 // dbId: 202124 NO (Nytric Oxyde) R-ALL-202124.3
-// TODO: now, other than expanding, I need to add redundant data

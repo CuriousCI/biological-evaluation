@@ -155,33 +155,33 @@ REMOVE n: TargetReactionLikeEvent;
 
 //
 
-MATCH (targetSpecies)
-WHERE targetSpecies.dbId IN [202124]
-CALL
-  apoc.path.subgraphNodes(
-    targetSpecies,
-    {
-      relationshipFilter: "<fixed_point_2",
-      labelFilter: ">ReactionLikeEvent",
-      bfs: true
-    }
-  )
-  YIELD node
-CALL {
-  WITH node
-  MATCH (node)-[r:input]->(e)
-  RETURN
-    COLLECT({dbId: e.dbId, stoichiometry: r.stoichiometry, order: r.order}) AS reactants
-}
-CALL {
-  WITH node
-  MATCH (node)-[r:output]->(e)
-  RETURN
-    COLLECT({dbId: e.dbId, stoichiometry: r.stoichiometry, order: r.order}) AS products
-}
-RETURN
-  apoc.convert.toJson(
-    COLLECT({reaction: node.dbId, reactants: reactants, products: products}));
+// MATCH (targetSpecies)
+// WHERE targetSpecies.dbId IN [202124]
+// CALL
+//   apoc.path.subgraphNodes(
+//     targetSpecies,
+//     {
+//       relationshipFilter: "<fixed_point_2",
+//       labelFilter: ">ReactionLikeEvent",
+//       bfs: true
+//     }
+//   )
+//   YIELD node
+// CALL {
+//   WITH node
+//   MATCH (node)-[r:input]->(e)
+//   RETURN
+//     COLLECT({dbId: e.dbId, stoichiometry: r.stoichiometry, order: r.order}) AS reactants
+// }
+// CALL {
+//   WITH node
+//   MATCH (node)-[r:output]->(e)
+//   RETURN
+//     COLLECT({dbId: e.dbId, stoichiometry: r.stoichiometry, order: r.order}) AS products
+// }
+// RETURN
+//   apoc.convert.toJson(
+//     COLLECT({reaction: node.dbId, reactants: reactants, products: products}));
 
 // MATCH (targetSpecies)
 // WHERE targetSpecies.dbId IN [202124]

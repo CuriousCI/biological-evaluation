@@ -243,38 +243,41 @@ Average quantities
 // - EnvironmentInstance
 // - EnvironmentParameter
 
-#page(width: auto, height: 841.89pt, margin: 20pt)[
-    = UML class diagram
-    #align(center + horizon, image("docs.svg", height: 770pt))
-]
-
 = Data types specification
 
 - #logic[```js \d = /[0-9]/```]
 - #logic[```js \w = /[A-Za-z0-9_]/```]
 
+*Math*
+
+#logic[Interval = (min: Real [0..1], max: Real [0..1])] \
+#logic[MathML = String matching] https://www.w3.org/1998/Math/MathML/ \
+#logic[MathMLBoolean = String matching] https://www.w3.org/1998/Math/MathML/ \
+// TODO: with boolean values
+
+*Reactome*
+
 #logic[ReactomeDbId = Integer] @reactome-DatabaseObject\
-#logic[StableIdVersion (Reactome) = \
+#logic[StableIdVersion = \
     ~ String matching regex ```js /^R-[A-Z]{3}-\d{8}\.\d{2,3}$/```]
 @reactome-faq-identifiers \
+
+*SBML*
+
+#logic[String1 = String matching regex ```js //```] \
 #logic[SId = String matching regex ```js /^[a-zA-Z_]\w*$/```]
 #ref(
     <sbml>,
     supplement: [Section 3.1.7],
-)
-\
-#logic[Interval = (min: Real [0..1], max: Real [0..1])] \
-#logic[MathML = String according to] https://www.w3.org/1998/Math/MathML/ \
+) \
 
-// #logic[Constraint = ...] \
 
 == Interval
 
-The #logic[Interval] type represents a real open interval of the type
-$(min, max)$.
-
-// TODO: When #logic[min] is not defined it's intended to be interpreted as $-infinity$
-// TODO: When #logic[max] is not defined it's intended to be interpreted as $+infinity$
+The #logic[Interval] type represents an open interval in $RR$ of the type
+$(#logic[min], #logic[max])$ s.t.
+- when #logic[min] is not defined, it is interpreted as $-infinity$
+- when #logic[max] is not defined, it is interpreted as $+infinity$
 
 #constraint(
     [C.Interval.min_leq_max],
@@ -291,27 +294,38 @@ $(min, max)$.
 
 == ReactomeDbId
 
-Other Reactome entities can be identified with a #logic[ReactomeDbId], but it's
-pattern does not match the definition of #logic[SId] used to identify objects in
-SBML. In order to generate a correct SBML Model the #logic[ReactomeDbId] must be
-converted.
+This is required because not all instances of #logic[DatabaseObject] in Reactome
+have a #logic[StableIdVersion], which is the one usually displayed in the
+Reactome Pathway Browser @reactome-pathway-browser. Instances of
+#logic[DatabaseObject] in Reactome can be identified with a
+#logic[ReactomeDbId], but its pattern does not match the definition of
+#logic[SId] used to identify objects in SBML.
+
+In order to generate a correct #logic[SBMLModel] the #logic[ReactomeDbId] must
+be converted into a #logic[SId].
 
 #operation(
-    [into],
+    [ReactomeDbId_into_SId],
     args: [db_id: ReactomeDbId],
     type: [SId],
     post: [. . .],
 )
 
-== StableId
+== StableIdVersion
 
-The #logic[StableId] type is used to identify a #logic[PhysicalEntity] or an
-#logic[Event] in Reactome, but it's pattern does not match the definition of
-#logic[SId] used to identify objects in SBML. In order to generate a correct
-SBML Model the #logic[StableId] must be converted.
+The #logic[StableIdVersion] type is useful because is the one usually displayed
+in the Reactome Pathway Browser @reactome-pathway-browser. It is useful to
+accept it in the description of the models.
+
+The #logic[StableIdVersion] type is used to identify instances of
+#logic[PhysicalEntity] or #logic[Event] in Reactome, but it's pattern does not
+match the definition of #logic[SId] used to identify objects in SBML.
+
+In order to generate a correct #logic[SBMLModel] the #logic[StableId] must be
+converted.
 
 #operation(
-    [into],
+    [StableIdVersion_into_SId],
     args: [st_id: StableId],
     type: [SId],
     post: [. . .],
@@ -325,14 +339,19 @@ SBML Model the #logic[StableId] must be converted.
 // #TODO[this could be defined per class, meaning that different classes return a
 //     different SId based on the class]
 
-#pagebreak()
+// #pagebreak()
 
-= Classes specification
+#page(width: auto, height: 841.89pt, margin: 20pt)[
+    = _(Reactome)_ UML class diagram
+    #align(center + horizon, image("docs-1.svg", height: 770pt))
+]
+
+= Classes specification pt.1
 
 == CatalystActivity
 
 The one above is the reason why a #logic[PhysicalEntity]'s role in
-#logic[_catalyst_entity_] has multiplicity 0..\*.
+#logic[_catalyst_activity_entity_] has multiplicity 0..\*.
 
 "If a #logic[PhysicalEntity] can enable multiple molecular functions, a separate
 #logic[CatalystActivity] instance is created for each" #ref(
@@ -393,11 +412,118 @@ is to just pick any of them. For this reason the
 // - if no compartment is present just use a default one
 // - if multiple compartments are present use whichever you want (for now)
 
+== Pathway
+
+The instances of #logic[Pathway] are organized hierarchically, i.e. the
+signaling pathways are collected under the Signal Transduction #logic[Pathway]
+(#logic[StableIdVersion] R-HSA-162582.13). This allows to easily cut a subset of
+reactions by specifying the _target pathways_ in a model and taking into
+consideration only the reactions which are both directly or indirectly under
+that pathway (see the #logic[reactions()] operation).
+
+Ignoring the #logic[_inferred_to_ association] there are about 34 root pathways.
+
+#TODO[handle #logic[_inferred_to_]]
+
+#operation(
+    [reactions],
+    type: [ReactionLikeEvent [0..\*]],
+    // prec: ```
+    // ```,
+    post: ```
+    result =
+        { reaction |
+            ReactionLikeEvent(reaction) and
+            *pathway_has_event*(this, reaction) }
+        $union$
+        { reaction | exists pathway
+            Pathway(pathway) and
+            *pathway_has_event*(this, pathway) and
+            reactions(pathway, reaction) }
+    ```,
+)
+
+// exists events
+//     events = { event | *pathway_has_event*(this, reaction) } ->
+
+== PhysicalEntity
+
+#TODO[how should I handle complexes here?]
+
+#operation(
+    [produced_by],
+    type: [ReactionLikeEvent [0..\*]],
+    post: ```
+    result = { reaction |
+        ReactionLikeEvent(reaction) and
+        *output*(this, reaction) and
+        not exists pathway
+            IgnoredPathway(pathway) and reactions(pathway, reaction)
+    }
+    ```,
+)
+
+#pagebreak()
+
+#operation(
+    [fixed_point],
+    type: [DatabaseObject [0..\*]],
+    post: ```
+    result =
+        { this } $union$
+        produced_by(this) $union$
+        { object | exists reaction, reaction_input
+            produced_by(this, reaction) and
+            (
+                *input*(reaction, reaction_input) or
+                (exists catalyst_activity
+                    CatalystActivity(catalyst_activity) and
+                    *catalyzed_event*(catalyst_activity, reaction)) and
+                    *catalyst_entity*(
+                        catalyst_activity,
+                        reaction_input
+                    )
+            ) and
+            fixed_point(reaction_input, object)
+        }
+
+    ```,
+)
+
+#TODO[rename #logic[fixed_point()] to #logic[backwards_reachable_objects()]]
+
+// == ReactionLikeEvent
+
+#page(width: auto, height: 841.89pt, margin: 20pt)[
+    = _(Simulation)_ UML class diagram
+    #align(center + horizon, image("docs-2.svg", height: 770pt))
+]
 
 
-== Event
+= Classes specification pt.2
 
-== FastReaction
+== CompartmentInstance
+
+#constraint(
+    [C.CompartmentInstance.entities_have_compartment_listed],
+    ```
+    forall compartment_instance, compartment, species, physical_entity
+        (
+            CompartmentInstance(compartment_instance) and
+            Compartment(compartment) and
+            SpeciesInstance(species) and
+            PhysicalEntity(physical_entity) and
+            *compartment_instance*(compartment, compartment_instance) and
+            *compartment_species*(compartment_instance, species) and
+            *physical_entity_species*(physical_entity, species)
+        ) ->
+            *compartment_entity*(compartment, physical_entity)
+    ```,
+)
+
+#TODO[what happens if it a PhysicalEntity has some compartments?]
+
+==
 
 == Model
 
@@ -443,89 +569,15 @@ is to just pick any of them. For this reason the
 )
 
 
-== Pathway
-
-#operation(
-    [reactions],
-    type: [ReactionLikeEvent [0..\*]],
-    // prec: ```
-    // ```,
-    post: ```
-    result =
-        { reaction |
-            ReactionLikeEvent(reaction) and
-            *pathway_has_event*(this, reaction) }
-        $union$
-        { reaction | exists pathway
-            Pathway(pathway) and
-            *pathway_has_event*(this, pathway) and
-            reactions(pathway, reaction) }
-    ```,
-)
-
-// exists events
-//     events = { event | *pathway_has_event*(this, reaction) } ->
-
-== PhysicalEntity
-
-TODO: how should I handle complexes here?
-
-#operation(
-    [produced_by],
-    type: [ReactionLikeEvent [0..\*]],
-    post: ```
-    result = { reaction |
-        ReactionLikeEvent(reaction) and
-        *output*(this, reaction) and
-        not exists pathway
-            IgnoredPathway(pathway) and reactions(pathway, reaction)
-    }
-    ```,
-)
-
-TODO: union with #logic[CatalystActivity]
-
-#operation(
-    [fixed_point],
-    type: [DatabaseObject [0..\*]],
-    post: ```
-    result =
-        { this } $union$
-        produced_by(this) $union$
-        { object | exists reaction, reaction_input
-            produced_by(this, reaction) and
-            (
-                *input*(reaction, reaction_input) or
-                (exists catalyst_activity
-                    CatalystActivity(catalyst_activity) and
-                    *catalyzed_event*(catalyst_activity, reaction)) and
-                    *catalyst_entity*(
-                        catalyst_activity,
-                        reaction_input
-                    )
-            ) and
-            fixed_point(reaction_input, object)
-        }
-
-    ```,
-)
-
-// - TODO: add "reach backwards" operation! At least in high level.
-// - TODO: add mathematical definition of problem
-
-// TODO: should I add
-// backwards_reachable_species()
-// to PhysicalEntity?
-//
-// Nah, it takes PhysicalEntity [0..*]
-// DONE!
-
-== ReactionLikeEvent
-
 == ReactionParameter??
 
 - it must satisfy structural constraints
 
+
+== UnitDefinition
+
+Basically a unit definition is a product of the single units inside (m/s, m/s^2
+etc...), easy as that.
 
 // #set text(font: "New Computer Modern", lang: "en", weight: "light", size: 11pt)
 // #set page(margin: 1.75in)

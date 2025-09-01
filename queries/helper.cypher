@@ -50,3 +50,44 @@ RETURN DISTINCT (labels(n));
 MATCH path = (r:ReactionLikeEvent)<-[:hasEvent*12..]-(p:Pathway)
 RETURN path
 LIMIT 1
+
+// Pathways without anyone above, just the types, without inferredTo
+MATCH (pathway:Pathway)
+WHERE NOT EXISTS { (event:Event)-[:hasEvent]->(pathway) }
+RETURN DISTINCT pathway.displayName
+
+// pathway.displayName
+// Autophagy
+// Cell Cycle
+// Complex III assembly
+// Cell-Cell communication
+// Cellular responses to stimuli
+// Transport of small molecules
+// Chromatin organization
+// Circadian clock
+// Developmental Biology
+// Digestion and absorption
+// Disease
+// DNA Repair
+// DNA Replication
+// Drug ADME
+// Extracellular matrix organization
+// Gene expression (Transcription)
+// Hemostasis
+// Immune System
+// Metabolism
+// Metabolism of proteins
+// Metabolism of RNA
+// Muscle contraction
+// Mycobacterium tuberculosis biological processes
+// Neuronal System
+// Organelle biogenesis and maintenance
+// Programmed Cell Death
+// Protein localization
+// Reproduction
+// Sensory Perception
+// Signal Transduction
+// Vesicle-mediated transport
+// DNA replication and repair
+// Innate Immune System
+// Drosophila signaling pathways

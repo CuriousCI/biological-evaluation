@@ -120,16 +120,17 @@
     name,
     body,
 ) = {
-    box(
-        stroke: (y: .25pt),
-        inset: (y: .5em),
-        width: 100%,
-        logic(text(font: "LMMonoLt10", name)),
-        // logic(text(font: "Latin Modern Mono", name)),
-    )
+    // box(
+    //     stroke: (bottom: .25pt),
+    //     inset: (bottom: .5em),
+    //     width: 100%,
+    highlight(logic(text(font: "LMMonoLt10", [[#name]])))
+    // logic(text(font: "Latin Modern Mono", name)),
+    // )
 
     v(-.5em)
 
+    // par(indent-block(logic(body)))
     par(indent-block(logic(body)))
 }
 
@@ -151,15 +152,15 @@
     prec: none,
     post: none,
 ) = {
-    box(
-        stroke: (y: .25pt),
-        inset: (y: .5em),
-        width: 100%,
-        // logic[#text(font: "Latin Modern Mono")[#name\(#args)#if (
-        logic[#text(font: "LMMonoLt10")[#name\(#args)#if (
-                type != none
-            ) [: #type]]],
-    )
+    // box(
+    //     stroke: (y: .25pt),
+    //     inset: (y: .5em),
+    //     width: 100%,
+    // logic[#text(font: "Latin Modern Mono")[#name\(#args)#if (
+    highlight(logic[#text(font: "LMMonoLt10")[#name\(#args)#if (
+            type != none
+        ) [: #type]]])
+    // )
 
     if prec != none {
         v(-.5em)

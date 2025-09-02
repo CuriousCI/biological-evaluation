@@ -26,12 +26,14 @@
 
 #set text(font: "New Computer Modern", lang: "en", weight: "light", 11pt)
 #set page(margin: 1.5in)
-#set highlight(fill: rgb("fbf1c744"))
+// #set highlight(fill: rgb("fbf1c744"))
+// #set highlight(fill: rgb("#f5f5f5"))
+#set highlight(fill: rgb("fbf1c788"))
 #set list(indent: 1em)
 
 #let proj-name = text(font: "LMMonoCaps10", "Bsys_eval")
 #let TODO(body) = box(fill: rgb("#f5f5f5"), inset: .75em)[
-    #text(font: "LMMonoCaps10", "TODO"): #body
+    #text(font: "LMMonoCaps10", underline[TODO]): #body
 ]
 
 #page(align(center + horizon, {
@@ -165,6 +167,7 @@ to generate a SBML model with
 
 The idea is to expand a portion of Reactome
 
+#TODO[this page is far from complete, you can skip to the next one]
 
 *Definition 1* _(... Model)._ A ... model $G$ is a tuple $(S_T, S, R, E)$ where:
 
@@ -252,8 +255,9 @@ Average quantities
 
 #logic[Interval = (min: Real [0..1], max: Real [0..1])] \
 #logic[MathML = String matching] https://www.w3.org/1998/Math/MathML/ \
-#logic[MathMLBoolean = String matching] https://www.w3.org/1998/Math/MathML/ \
-// TODO: with boolean values
+#logic[MathMLBoolean = String matching #logic[MathML] returning a boolean] \
+#logic[MathMLNumeric = String matching #logic[MathML] returning a number] \
+#logic[Stoichiometry = Integer >= 0]
 
 *Reactome*
 
@@ -270,6 +274,8 @@ Average quantities
     <sbml>,
     supplement: [Section 3.1.7],
 ) \
+#logic[UnitSId = String matching regex ```js /^[a-zA-Z_]\w*$/```] \
+#logic[ReactionItem = (SpeciesInstance, Stoichiometry)]
 
 
 == Interval
@@ -346,42 +352,38 @@ converted.
     #align(center + horizon, image("docs-1.svg", height: 770pt))
 ]
 
-= Classes specification pt.1
+= Classes specification pt. 1
 
 == CatalystActivity
 
-The one above is the reason why a #logic[PhysicalEntity]'s role in
-#logic[_catalyst_activity_entity_] has multiplicity 0..\*.
+The role of #logic[PhysicalEntity] in #logic[_catalyst_activity_entity_] has
+multiplicity #logic[0..\*] because _"If a #logic[PhysicalEntity] can enable
+    multiple molecular functions, a separate #logic[CatalystActivity] instance
+    is created for each"_ #ref(<data-model-glossary>, supplement: [Page 5]).
 
-"If a #logic[PhysicalEntity] can enable multiple molecular functions, a separate
-#logic[CatalystActivity] instance is created for each" #ref(
-    <data-model-glossary>,
-    supplement: [Page 5],
-)
-
-
-// may be associated to
-// 0..\* #logic[CatalystActivity].
-
-
-"If the #logic[PhysicalEntity] is a #logic[Complex] and a component of the
-complex mediates the molecular function, that component should be identified as
-the active unit of the #logic[CatalystActivity]." #ref(
+An additional constraint is required for active units, because _"If the
+    #logic[PhysicalEntity] is a #logic[Complex] and a component of the complex
+    mediates the molecular function, that component should be identified as the
+    active unit of the #logic[CatalystActivity]."_ #ref(
     <data-model-glossary>,
     supplement: [Page 5],
 )
 
 // TODO: does it expand to multiple level complexes?
+
 #constraint(
-    [C.CatalystActivity.active_unit_is_in_complex],
+    [C.CatalystActivity.active_unit_is_component_of_complex],
     ```
     forall catalyst_activity, complex, complex_component
         (
             CatalystActivity(catalyst_activity) and
             Complex(complex) and
             PhysicalEntity(complex_component) and
-            *catalyst_entity*(catalyst_activity, complex) and
-            *catalyst_active_unit*(catalyst_activity, complex_component)
+            *catalyst_activity_entity*(catalyst_activity, complex) and
+            *catalyst_activity_active_unit*(
+                catalyst_activity,
+                complex_component
+            )
         ) ->
             *complex_has_component_entity*(complex, complex_component)
     ```,
@@ -389,8 +391,8 @@ the active unit of the #logic[CatalystActivity]." #ref(
 
 == Compartment
 
-#TODO[move this information to the #logic[_compartment_entity_] association, or
-    to #logic[PreferredCompartmentForSimulation]]
+// #TODO[move this information to the #logic[_compartment_entity_] association, or
+//     to #logic[PreferredCompartmentForSimulation]]
 
 The #logic[Compartment] class has some quirks. In Reactome, the
 #logic[Compartment]'s role in the #logic[_compartment_entity_] association has
@@ -407,26 +409,27 @@ On the other hand there are 14046 entities which have multiple compartments
 is to just pick any of them. For this reason the
 
 
-// TODO: actual model requires 1..1 compartments
+// TODO: actual model requires 1..1 compartments for PhysicalEntity
 //
 // - if no compartment is present just use a default one
 // - if multiple compartments are present use whichever you want (for now)
 
 == Pathway
 
-The instances of #logic[Pathway] are organized hierarchically, i.e. the
-signaling pathways are collected under the Signal Transduction #logic[Pathway]
-(#logic[StableIdVersion] R-HSA-162582.13). This allows to easily cut a subset of
-reactions by specifying the _target pathways_ in a model and taking into
-consideration only the reactions which are both directly or indirectly under
-that pathway (see the #logic[reactions()] operation).
+The instances of #logic[Pathway] are organized hierarchically, i.e. all the
+signaling pathways are collected under the Signal Transduction top level
+#logic[Pathway] (#logic[StableIdVersion] R-HSA-162582.13). This allows to easily
+extract a subset of reactions by specifying the _target pathways_ in a model and
+taking into consideration only the reactions which are included, both directly
+or indirectly, in that pathway (see the #logic[included_reactions()] operation).
 
-Ignoring the #logic[_inferred_to_ association] there are about 34 root pathways.
+Ignoring the #logic[_inferred_to_ association] there are about 34 top level
+pathways.
 
 #TODO[handle #logic[_inferred_to_]]
 
 #operation(
-    [reactions],
+    [included_reactions],
     type: [ReactionLikeEvent [0..\*]],
     // prec: ```
     // ```,
@@ -439,60 +442,65 @@ Ignoring the #logic[_inferred_to_ association] there are about 34 root pathways.
         { reaction | exists pathway
             Pathway(pathway) and
             *pathway_has_event*(this, pathway) and
-            reactions(pathway, reaction) }
+            included_reactions(pathway, reaction) }
     ```,
 )
 
 // exists events
 //     events = { event | *pathway_has_event*(this, reaction) } ->
 
+#pagebreak()
+
 == PhysicalEntity
 
 #TODO[how should I handle complexes here?]
 
+The reactions which directly have #logic[this] as a product.
+
 #operation(
-    [produced_by],
+    [directly_produced_by],
     type: [ReactionLikeEvent [0..\*]],
     post: ```
     result = { reaction |
-        ReactionLikeEvent(reaction) and
-        *output*(this, reaction) and
-        not exists pathway
-            IgnoredPathway(pathway) and reactions(pathway, reaction)
+        ReactionLikeEvent(reaction) and *output*(this, reaction)
     }
     ```,
 )
+// not exists pathway
+//     IgnoredPathway(pathway) and reactions(pathway, reaction)
 
-#pagebreak()
+// #pagebreak()
+
+The set of instances of #logic[DatabaseObject] which are directly or indirectly
+involved in the production of #logic[this].
 
 #operation(
-    [fixed_point],
+    [produced_by],
     type: [DatabaseObject [0..\*]],
     post: ```
     result =
         { this } $union$
-        produced_by(this) $union$
+        { reaction | directly_produced_by(this, reaction) } $union$
         { object | exists reaction, reaction_input
-            produced_by(this, reaction) and
+            directly_produced_by(this, reaction) and
             (
                 *input*(reaction, reaction_input) or
                 (exists catalyst_activity
                     CatalystActivity(catalyst_activity) and
-                    *catalyzed_event*(catalyst_activity, reaction)) and
-                    *catalyst_entity*(
+                    *catalyzed_event*(catalyst_activity, reaction) and
+                    *catalyst_activity_entity*(
                         catalyst_activity,
                         reaction_input
                     )
+                )
             ) and
-            fixed_point(reaction_input, object)
+            produced_by(reaction_input, object)
         }
 
     ```,
 )
 
-#TODO[rename #logic[fixed_point()] to #logic[backwards_reachable_objects()]]
-
-// == ReactionLikeEvent
+#TODO[handle active units too]
 
 #page(width: auto, height: 841.89pt, margin: 20pt)[
     = _(Simulation)_ UML class diagram
@@ -500,21 +508,21 @@ Ignoring the #logic[_inferred_to_ association] there are about 34 root pathways.
 ]
 
 
-= Classes specification pt.2
+= Classes specification pt. 2
 
-== CompartmentInstance
+== CompartmentDefinition
 
 #constraint(
-    [C.CompartmentInstance.entities_have_compartment_listed],
+    [C.CompartmentDefinition.entities_have_compartment_listed],
     ```
-    forall compartment_instance, compartment, species, physical_entity
+    forall compartment_Definition, compartment, species, physical_entity
         (
-            CompartmentInstance(compartment_instance) and
+            CompartmentDefinition(compartment_instance) and
             Compartment(compartment) and
-            SpeciesInstance(species) and
+            SpeciesDefinition(species) and
             PhysicalEntity(physical_entity) and
-            *compartment_instance*(compartment, compartment_instance) and
-            *compartment_species*(compartment_instance, species) and
+            *compartment_Definition*(compartment, compartment_instance) and
+            *compartment_species*(compartment_Definition, species) and
             *physical_entity_species*(physical_entity, species)
         ) ->
             *compartment_entity*(compartment, physical_entity)
@@ -522,8 +530,6 @@ Ignoring the #logic[_inferred_to_ association] there are about 34 root pathways.
 )
 
 #TODO[what happens if it a PhysicalEntity has some compartments?]
-
-==
 
 == Model
 
@@ -535,13 +541,45 @@ Ignoring the #logic[_inferred_to_ association] there are about 34 root pathways.
 //     $S_I$ = { entity | *initial_entity_model*(this, entity) } ->
 
 #operation(
-    [fixed_point],
+    [model_objects],
     type: [DatabaseObject [1..\*]],
     post: ```
     result = { object | exists entity
-        *initial_entity_model*(this, entity) and
-        fixed_point(entity, object)
+        PhysicalEntity(entity) and
+        DatabaseObject(object) and
+        *model_target_entity*(this, entity) and
+        produced_by(entity, object) and
+        (
+            not RestrictedModel(this) or
+            exists pathway, reaction
+                Pathway(pathway) and
+                ReactionLikeEvent(reaction) and
+                included_reactions(pathway, reaction) and
+                (
+                    object = reaction or
+                    *entity_reaction*(object, reaction) or
+                    *catalyzed_reaction*(object, reaction)
+                )
+        )
     }
+    ```,
+)
+
+#pagebreak()
+
+#constraint(
+    [C.Model.objects_have_corresponding_definitions],
+    ```
+    forall model, object
+        (
+            Model(model) and
+            DatabaseObject(object) and
+            model_objects(model, object)
+        ) ->
+            exists definition
+                Definition(definition) and
+                *definition_model*(definition, model) and
+                *database_object_definition*(object, definition)
     ```,
 )
 

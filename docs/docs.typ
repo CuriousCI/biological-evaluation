@@ -108,6 +108,8 @@ to generate a SBML model with
 //
 // #TODO[better notation here, write something decent to introduce the algorithm]
 
+
+TODO: helper functions are described at page 15
 #box(
     stroke: (y: .25pt),
     inset: (y: .5em),
@@ -122,20 +124,20 @@ to generate a SBML model with
         *input*: $epsilon, delta in (0, 1)$; \
         *input*: seed, random seed; \
 
-        $F <-$ fixed_point($S_T$, $P_I$) \
-        model $<-$ $(S_T, S(F), R(F), E(F))$ \
+        $"model_description" <-$ describe_model($S_T$, $P_I$) \
+        model $<-$ generate_model(model_description) \
         // $S$ $union$ constraints($S$) $union$ $C$ \
         env $<-$ define env for model \
         $V$ = $emptyset$ #logic(text(comment-color)[\/\/ set of virtual
             patients]) \
 
         *while* $not$ halt requested *do* \
-        ~ $v$ $<-$ parameter assignement for model #logic(text(
+        ~ $v$ $<-$ instantiate_model(model) #logic(text(
             comment-color,
         )[\/\/ virtual patient]) \
         ~ *if* $not$ $v$ satisfies structural constraints *then* \
         ~~ *continue*; \
-        ~ *if* APSG(model, $v$, env, seed, $epsilon$, $delta$) *then* \
+        ~ *if* APSG($v$, env, seed, $epsilon$, $delta$) *then* \
         ~~ $V <- V union { v }$; \
     ])
 ]
@@ -221,31 +223,6 @@ Average quantities
 
 #pagebreak()
 
-// - DatabaseObject
-//     - Compartment
-//     - CatalystActivity
-//     - Event
-//         - Pathway
-//             - IgnoredPathway
-//         - ReactionLikeEvent
-//     - PhysicalEntity
-//         - InitialSpecies
-//         - Complex
-//         - OtherEntityType
-//         - Drug
-//             - RNADrug
-//             - ProteinDrug
-//             - ChemicalDrug
-//
-// - Model
-// - ModelInstance
-//     - SimulatedModelInstance
-//     - Measurement
-// - ReactionParameter
-//
-// - EnvironmentInstance
-// - EnvironmentParameter
-
 = Data types specification
 
 - #logic[```js \d = /[0-9]/```]
@@ -274,8 +251,8 @@ Average quantities
     <sbml>,
     supplement: [Section 3.1.7],
 ) \
-#logic[UnitSId = String matching regex ```js /^[a-zA-Z_]\w*$/```] \
-#logic[ReactionItem = (SpeciesInstance, Stoichiometry)]
+#logic[UnitSId = String matching regex ```js /^[a-zA-Z_]\w*$/```]
+// #logic[ReactionItem = (SpeciesInstance, Stoichiometry)]
 
 
 == Interval
@@ -531,7 +508,11 @@ involved in the production of #logic[this].
 
 #TODO[what happens if it a PhysicalEntity has some compartments?]
 
-== Model
+== ModelDescription
+
+#TODO[add possibility to specify KineticLaw for each reaction, or a subset of
+    reactions
+]
 
 // args: [$S_I$: PhysicalEntity [1..\*]],
 // args: [$S_I$: PhysicalEntity [1..\*]],
@@ -565,75 +546,195 @@ involved in the production of #logic[this].
     ```,
 )
 
-#pagebreak()
+// #pagebreak()
 
-#constraint(
-    [C.Model.objects_have_corresponding_definitions],
-    ```
-    forall model, object
-        (
-            Model(model) and
-            DatabaseObject(object) and
-            model_objects(model, object)
-        ) ->
-            exists definition
-                Definition(definition) and
-                *definition_model*(definition, model) and
-                *database_object_definition*(object, definition)
-    ```,
-)
+// #constraint(
+//     [C.Model.objects_have_corresponding_definitions],
+//     ```
+//     forall model, object
+//         (
+//             Model(model) and
+//             DatabaseObject(object) and
+//             model_objects(model, object)
+//         ) ->
+//             exists definition
+//                 Definition(definition) and
+//                 *definition_model*(definition, model) and
+//                 *database_object_definition*(object, definition)
+//     ```,
+// )
+
+// == ModelInstance
+// #constraint(
+//     [C.ModelInstance.every_reaction_has_a_parameter],
+//     ```
+//     ```,
+// )
+
+#pagebreak()
 
 == ModelInstance
 
 #constraint(
-    [C.ModelInstance.every_reaction_has_a_parameter],
+    [C.ModelInstance.no_local_parameters_without_value],
     ```
+    forall model_instance, model, reaction, kinetic_law, local_parameter
+        (
+            ModelInstance(model_instance) and
+            Model(model) and
+            ReactionDefinition(reaction) and
+            KineticLaw(kinetic_law) and
+            LocalParameter(local_parameter) and
+            *instance_model*(model_instance, model) and
+            *model_definition*(model, reaction) and
+            *kinetic_law_reaction*(kinetic_law, reaction) and
+            *kinetic_law_local_parameter*(kinetic_law, local_parameter) and
+            not exists value
+                value(local_parameter, value)
+        ) ->
+            exists local_parameter_assignment
+                LocalParameterAssignment(local_parameter_assignment) and
+                *model_instance_paramenter*(
+                    model_instance,
+                    local_parameter_assignment
+                ) and
+                *assignment_local_paramenter*(
+                    local_parameter_assignment,
+                    local_parameter
+                )
+
     ```,
 )
 
-#constraint(
-    [C.ModelInstance.reaction_parameters_are_structurally_valid],
-    ```
+// #constraint(
+//     [C.ModelInstance.reaction_parameters_are_structurally_valid],
+//     [],
+//     // [. . .],
+// )
 
-    ```,
-)
 
 == SimulatedModelInstance
 
 #operation(
     [is_valid],
-    post: ```
+    post: [. . .],
+)
+
+== Measurement
+
+#constraint(
+    [C.Measurement.species_in_model],
+    ```
+    forall measurement, model_instance, model, species
+        (
+            Model(model) and
+            SimulatedModelInstance(model_instance) and
+            Measurement(measurement) and
+            Species(species) and
+            *measurement_species*(measurement, species) and
+            *measurement_simulation*(measurement, model_instance) and
+            *instance_model*(model_instance, model)
+        ) ->
+            *model_definition*(model, species)
+
     ```,
 )
 
-
-== ReactionParameter??
-
-- it must satisfy structural constraints
+// == ReactionParameter??
+//
+// - it must satisfy structural constraints
 
 
 == UnitDefinition
 
-Basically a unit definition is a product of the single units inside (m/s, m/s^2
-etc...), easy as that.
+#ref(<sbml>, supplement: [page 45])
 
-// #set text(font: "New Computer Modern", lang: "en", weight: "light", size: 11pt)
-// #set page(margin: 1.75in)
-// #set par(
-//     leading: 0.55em,
-//     spacing: 0.85em,
-//     first-line-indent: 1.8em,
-//     justify: true,
-// )
-// #set heading(numbering: "1.1")
-// #set math.equation(numbering: "(1)")
+#TODO[better description]
 
-// #page(align(center + horizon, [
-// #heading(numbering: none, outlined: false, text(size: 2em, [MyPrecious]))
-// #text(size: 1.7em, [Ionuţ Cicio]) \
-// senza risparmiare neanche un carattere
-// ]))
+// #pagebreak()
 
-#pagebreak()
+= Use-case diagram
+
+\
+
+#align(center, image("docs-3.svg"))
+
+\
+
+== "Helper" use-case
+
+#operation(
+    [generate_model],
+    args: [description: ModelDescription],
+    type: [Model],
+    post: [
+        TODO:
+        - create necessary units (TODO: which? how?)
+        - create default CompartmentDefinition
+        - create CompartmentDefinition from Compartment
+            - convert id to SId
+        - create SpeciesDefinition from PhysicalEntity
+            - convert id to SId
+            - add one of the compartments if the entity has any
+            - otherwise assign to default
+        - create ReactionDefinition
+            - convert id to SId
+            - connect products (inputs)
+            - connect reactants (outputs)
+            - connect modifiers (catalysts)
+            - add kinetic law (either manually specified or automatic, like
+                LawOfMassAction)
+            - add local parameters
+        - create constraints
+            - i.e. from known_range attribute
+        -
+    ],
+)
+
+#operation(
+    [instantiate_model],
+    args: [model: Model],
+    type: [ModelInstance],
+    post: [
+        TODO:
+        - add LocalParameterAssignment for undefined LocalParameters
+        - add environment parameters to model (Parameter)
+    ],
+)
+
+// #pagebreak()
+
+#operation(
+    [simulate_model],
+    args: [instance: ModelInstance],
+    type: [SimulatedModelInstance],
+    post: [
+        TODO:
+        - generate measurements
+    ],
+)
+
+
+== "Study" use-case
+
+#operation(
+    [describe_model],
+    args: [\
+        ~ target_entities: PhysicalEntity [1..\*] \
+        ~ target_pathways: Pathway [0..\*] \
+    ],
+    type: [ModelDescription],
+    prec: ```
+    target species are within the target pathways
+    ```,
+    post: [return a model description],
+)
+
+#operation(
+    [evaluate],
+    args: [model: Model],
+    type: [VirtualPatient [0..\*]],
+    post: [run algorithm at page 4],
+)
 
 #page(bibliography("bibliography.bib"))

@@ -1,9 +1,9 @@
 MATCH (reactionInput)<-[:input]-(reaction)
-CREATE (reaction)<-[:fixedPoint]-(reactionInput);
+MERGE (reaction)<-[:fixedPoint]-(reactionInput);
 MATCH (reactionOutput)<-[:output]-(reaction)
-CREATE (reactionOutput)<-[:fixedPoint]-(reaction);
+MERGE (reactionOutput)<-[:fixedPoint]-(reaction);
 MATCH (reaction)-->(:CatalystActivity)-[:physicalEntity]->(physicalEntity)
-CREATE (reaction)<-[:fixedPoint]-(physicalEntity);
+MERGE (reaction)<-[:fixedPoint]-(physicalEntity);
 
 // https://neo4j.com/docs/apoc/current/graph-refactoring/invert-relationship/
 MATCH (targetPathway)

@@ -38,7 +38,7 @@
 
 #page(align(center + horizon, {
     heading(numbering: none, outlined: false, text(size: 2em, proj-name))
-    [Ionuţ Cicio]
+    [Ionuț Cicio]
 
     align(bottom, datetime.today().display("[day]/[month]/[year]"))
     link("https://github.com/CuriousCI/bsys-eval")
@@ -131,8 +131,13 @@ TODO: helper functions are described at page 15
         $V$ = $emptyset$ #logic(text(comment-color)[\/\/ set of virtual
             patients]) \
 
+        // instantiate
+        // generate
+        // biological
+        // model
+        // instance
         *while* $not$ halt requested *do* \
-        ~ $v$ $<-$ instantiate_model(model) #logic(text(
+        ~ $v$ $<-$ instantiate_biological_model(model) #logic(text(
             comment-color,
         )[\/\/ virtual patient]) \
         ~ *if* $not$ $v$ satisfies structural constraints *then* \
@@ -230,17 +235,18 @@ Average quantities
 
 *Math*
 
+#logic[Natural = Integer >= 0]
 #logic[Interval = (min: Real [0..1], max: Real [0..1])] \
 #logic[MathML = String matching] https://www.w3.org/1998/Math/MathML/ \
 #logic[MathMLBoolean = String matching #logic[MathML] returning a boolean] \
 #logic[MathMLNumeric = String matching #logic[MathML] returning a number] \
-#logic[Stoichiometry = Integer >= 0]
+#logic[Stoichiometry = Natural]
 
 *Reactome*
 
-#logic[ReactomeDbId = Integer] @reactome-DatabaseObject\
+#logic[ReactomeDbId = Natural] @reactome-DatabaseObject\
 #logic[StableIdVersion = \
-    ~ String matching regex ```js /^R-[A-Z]{3}-\d{8}\.\d{2,3}$/```]
+    ~ String matching regex ```js /^R-[A-Z]{3}-\d{1,8}\.\d{1,3}$/```]
 @reactome-faq-identifiers \
 
 *SBML*
@@ -253,7 +259,8 @@ Average quantities
 ) \
 #logic[UnitSId = String matching regex ```js /^[a-zA-Z_]\w*$/```]
 // #logic[ReactionItem = (SpeciesInstance, Stoichiometry)]
-
+//
+// TODO: if PhysicalEntity in Reaction is catalyst, then it cannot be a reactant
 
 == Interval
 
@@ -289,7 +296,7 @@ be converted into a #logic[SId].
 
 #operation(
     [ReactomeDbId_into_SId],
-    args: [db_id: ReactomeDbId],
+    args: [database_id: ReactomeDbId],
     type: [SId],
     post: [. . .],
 )
@@ -300,19 +307,26 @@ The #logic[StableIdVersion] type is useful because is the one usually displayed
 in the Reactome Pathway Browser @reactome-pathway-browser. It is useful to
 accept it in the description of the models.
 
-The #logic[StableIdVersion] type is used to identify instances of
-#logic[PhysicalEntity] or #logic[Event] in Reactome, but it's pattern does not
-match the definition of #logic[SId] used to identify objects in SBML.
-
-In order to generate a correct #logic[SBMLModel] the #logic[StableId] must be
-converted.
-
 #operation(
-    [StableIdVersion_into_SId],
-    args: [st_id: StableId],
-    type: [SId],
+    [StableIdVersion_into_ReactomeDbId],
+    args: [stable_id],
+    type: [ReactomeDbId],
     post: [. . .],
 )
+
+// The #logic[StableIdVersion] type is used to identify instances of
+// #logic[PhysicalEntity] or #logic[Event] in Reactome, but it's pattern does not
+// match the definition of #logic[SId] used to identify objects in SBML.
+//
+// In order to generate a correct #logic[SBMLModel] the #logic[StableId] must be
+// converted.
+//
+// #operation(
+//     [StableIdVersion_into_SId],
+//     args: [st_id: StableId],
+//     type: [SId],
+//     post: [. . .],
+// )
 
 
 // post: [ to be defined],
@@ -390,6 +404,18 @@ is to just pick any of them. For this reason the
 //
 // - if no compartment is present just use a default one
 // - if multiple compartments are present use whichever you want (for now)
+
+== DatabaseObjectWithStableId
+
+#constraint(
+    [C.DatabaseObjectWithStableId.either_database_id_or_id_is_defined],
+    ```
+    forall object
+        DatabaseObjectWithStableId(object) ->
+            exists id
+                database_id(object, id) or id(object, id)
+    ```,
+)
 
 == Pathway
 
@@ -664,7 +690,7 @@ involved in the production of #logic[this].
 == "Helper" use-case
 
 #operation(
-    [generate_model],
+    [yield_sbml_model],
     args: [description: ModelDescription],
     type: [Model],
     post: [

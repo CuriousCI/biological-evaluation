@@ -235,7 +235,7 @@ Average quantities
 
 *Math*
 
-#logic[Natural = Integer >= 0]
+#logic[Natural = Integer >= 0] \
 #logic[Interval = (min: Real [0..1], max: Real [0..1])] \
 #logic[MathML = String matching] https://www.w3.org/1998/Math/MathML/ \
 #logic[MathMLBoolean = String matching #logic[MathML] returning a boolean] \

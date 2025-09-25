@@ -24,7 +24,6 @@ AUTH = ('noe4j', 'neo4j')
 REACTOME_DATABASE = 'graph.db'
 
 if __name__ == '__main__':
-    # document: SBMLDocument = SBMLDocument()
     biological_situation_definition: BiologicalSituationDefinition = (
         BiologicalSituationDefinition(
             target_entities={PhysicalEntity(ReactomeDbId(202124))},
@@ -36,8 +35,6 @@ if __name__ == '__main__':
         )
     )
 
-    # exit()
-
     with GraphDatabase.driver(
         uri=NEO4J_URL_REACTOME, auth=AUTH, database=REACTOME_DATABASE
     ) as driver:
@@ -45,23 +42,18 @@ if __name__ == '__main__':
             driver.verify_connectivity()
             model: SBMLDocument
             (model, _) = biological_situation_definition.yield_sbml_model(driver)
-            doc = libsbml.writeSBMLToString(model)
+            sbml_str = libsbml.writeSBMLToString(model)
             with open('test.sbml', 'w') as file:
-                file.write(doc)
-            rr = roadrunner.RoadRunner('./test.sbml')
-            result = rr.simulate(
-                0,
-                10,
-                1000,
-                ['time'],
-                # + list(
-                #     map(
-                #         # lambda physical_entity: str(physical_entity.standard_id),
-                #         # physical_entities,
-                #     )
-                # ),
-            )
-            # rr.plot(result=result, loc='upper left')
+                file.write(sbml_str)
+
+            try:
+                rr = roadrunner.RoadRunner(sbml_str)
+                result = rr.simulate(0, 10, 1000)
+                rr.plot(result=result, loc='upper left')
+                # print(result)
+            except Exception as e:
+                # http://sys-bio.github.io/roadrunner/docs-build/tutorial/tutorial.html
+                print(e)
 
         except Exception as exception:
             print(exception)
@@ -69,12 +61,32 @@ if __name__ == '__main__':
 
     virtual_patients = set()
 
-    # while True:
-    # instance = yield_model_instance(model)
-    # if True:
-    #     virtual_patients.add(instance)
-    # break
+    while True:
+        # instance = yield_model_instance(model)
+        if True:
+            # virtual_patients.add(instance)
+            break
 
+
+# err = model.checkConsistency()
+# print(model.getError(err))
+# with open('test.sbml', 'w') as file:
+#     file.write(doc)
+
+
+# result = rr.simulate(
+#     0,
+#     10,
+#     1000,
+#     ['time', '202124'],
+# )
+
+# + list(
+#     map(
+#         # lambda physical_entity: str(physical_entity.standard_id),
+#         # physical_entities,
+#     )
+# ),
 # fibrin_results = query(driver)
 # print(exception)
 #     physical_entities: set[model.PhysicalEntity] = set()

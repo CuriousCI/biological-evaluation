@@ -1,15 +1,12 @@
 """ """
 
 from libsbml import SBMLDocument
-import neo4j
-
-from library.model import BiologicalSituationDefinition
 
 
 # yield
 # model
 # instance
-def yield_model_instance(model: SBMLDocument) -> SBMLDocument:
+def yield_model_instance(_: SBMLDocument) -> SBMLDocument:
     return SBMLDocument()
 
 

@@ -2,8 +2,8 @@
 model stuff
 """
 
-import re
 import random
+import re
 from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
@@ -12,7 +12,7 @@ from typing import TypeAlias
 
 import libsbml
 import neo4j
-from libsbml import SBMLDocument
+
 
 FIRST = 0
 
@@ -21,7 +21,7 @@ StableIdVersion: TypeAlias = str
 MathML: TypeAlias = str
 
 
-@dataclass(repr=False, eq=False, frozen=True)
+@dataclass(frozen=True)
 class Interval:
     min: float | None
     max: float | None
@@ -42,13 +42,8 @@ class Natural:
     def __int__(self) -> int:
         return self.value
 
-
-# TODO: treat Natural as an int
-# return super().__int__()
-# def __new__(cls, value):
-#     return int.__new__(cls, int(value))
-# def __init__(self, value) -> None:
-#     super().__init__()
+    def __repr__(self) -> str:
+        return f'{self}'
 
 
 @dataclass(frozen=True)
@@ -58,6 +53,9 @@ class ReactomeDbId(Natural):
         match = re.search('R-[A-Z]{3}-([0-9]{1,8})[.][0-9]{1,3}$', str(id))
         assert match
         return ReactomeDbId(int(match.group()))
+
+    def __repr__(self) -> str:
+        return f'{self.value}'
 
 
 class Stoichiometry(Natural):
@@ -75,13 +73,17 @@ class DatabaseObject:
     def __eq__(self, value: object, /) -> bool:
         return isinstance(value, DatabaseObject) and self.id.__eq__(value.id)
 
+    def __repr__(self) -> str:
+        return f'{self.id}'
+
 
 class CatalystActivity(DatabaseObject):
     pass
 
 
 class Compartment(DatabaseObject):
-    pass
+    def __repr__(self) -> str:
+        return f'compartment_{super().__repr__()}'
 
 
 @dataclass(frozen=True)
@@ -94,6 +96,9 @@ class PhysicalEntity(DatabaseObject):
 
     def __eq__(self, value: object, /) -> bool:
         return super().__eq__(value)
+
+    def __repr__(self) -> str:
+        return f'species_{super().__repr__()}'
 
 
 class Event(DatabaseObject):
@@ -122,7 +127,7 @@ class EntityReaction:
 
 @dataclass(frozen=True)
 class ReactionLikeEvent(Event):
-    reactants: set[EntityReaction]
+    physical_entities: set[EntityReaction]
     catalysts: set[PhysicalEntity] = field(default_factory=set)
     compartments: set[Compartment] = field(default_factory=set)
     is_reversible: bool = False
@@ -134,7 +139,8 @@ class ReactionLikeEvent(Event):
     def __eq__(self, value: object, /) -> bool:
         return super().__eq__(value)
 
-    # def __
+    def __repr__(self) -> str:
+        return f'reaction_{super().__repr__()}'
 
 
 class Pathway(Event):
@@ -159,12 +165,13 @@ class BiologicalSituationDefinition:
     target_entities: set[PhysicalEntity]
     target_pathways: set[Pathway] | None
     constraints: list[MathML]
+    # TODO: write constraints in terms of PhysicalEntity, a formula on PhysicalEntity, ReactionLikeEvent
 
     def __post_init__(self) -> None:
         assert not self.target_pathways or len(self.target_pathways) > 0
 
     @staticmethod
-    def from_sbml(sbml: SBMLDocument) -> 'BiologicalSituationDefinition':
+    def from_sbml(sbml: libsbml.SBMLDocument) -> 'BiologicalSituationDefinition':
         model: libsbml.Model = sbml.getModel()
         model.getSpecies()
         return BiologicalSituationDefinition(set(), None, [])
@@ -231,7 +238,8 @@ class BiologicalSituationDefinition:
                     {
                         relationshipFilter: "<fixedPoint",
                         labelFilter: ">TargetReactionLikeEvent",
-                        bfs: true
+                        bfs: true,
+                        maxLevel: 3
                     }
                 )
             YIELD node AS reactionLikeEvent
@@ -293,15 +301,15 @@ class BiologicalSituationDefinition:
             map(
                 lambda reaction: ReactionLikeEvent(
                     id=reaction['dbId'],
-                    reactants=set(
+                    physical_entities=set(
                         map(
                             lambda entity: EntityReaction(
                                 physical_entity=PhysicalEntity(
                                     ReactomeDbId(entity['dbId']),
                                     compartments=set(
                                         map(
-                                            lambda c: Compartment(
-                                                ReactomeDbId(c['dbId'])
+                                            lambda compartment: Compartment(
+                                                ReactomeDbId(compartment['dbId'])
                                             ),
                                             entity['compartments'],
                                         )
@@ -349,14 +357,15 @@ class BiologicalSituationDefinition:
             map(
                 lambda reaction_like_event: reaction_like_event.catalysts
                 | set(
-                    map(attrgetter('physical_entity'), reaction_like_event.reactants)
+                    map(
+                        attrgetter('physical_entity'),
+                        reaction_like_event.physical_entities,
+                    )
                 ),
                 reaction_like_events,
             ),
             set(),
         )
-
-        # print(list(map(vars, physical_entities)))
 
         reaction_like_events_compartmensts = reduce(
             set.union, map(attrgetter('compartments'), reaction_like_events), set()
@@ -381,17 +390,17 @@ class BiologicalSituationDefinition:
 
     def yield_sbml_model(
         self, driver: neo4j.Driver
-    ) -> tuple[SBMLDocument, Environment]:
-        objects = self.__model_objects(driver)
+    ) -> tuple[libsbml.SBMLDocument, Environment]:
+        sbml_document: libsbml.SBMLDocument = libsbml.SBMLDocument(3, 1)
 
-        sbml_document: libsbml.SBMLDocument = SBMLDocument(3, 1)
         sbml_model: libsbml.Model = sbml_document.createModel()
         sbml_model.setTimeUnits('second')
         sbml_model.setExtentUnits('mole')
         sbml_model.setSubstanceUnits('mole')
 
+        # TODO: better id names
         default_compartment: libsbml.Compartment = sbml_model.createCompartment()
-        default_compartment.setId('cd')
+        default_compartment.setId('default_compartment')
         default_compartment.setConstant(True)
         default_compartment.setSize(1)
         default_compartment.setSpatialDimensions(3)
@@ -399,37 +408,39 @@ class BiologicalSituationDefinition:
 
         # TODO: __repr__ for compartments etc... just to make it easier to display, maybe with handling of the default?
         # TODO: there are too many 'cd's
-        for obj in objects:
+        for obj in self.__model_objects(driver):
             match obj:
-                case PhysicalEntity():
-                    species: libsbml.Species = sbml_model.createSpecies()
-                    species.setId(f's{obj.id}')
-                    species_compartment = (
-                        int(list(obj.compartments)[0].id)
-                        if len(list(obj.compartments)) > 0
-                        else 'd'
-                    )
-                    species.setCompartment(f'c{species_compartment}')
-                    species.setConstant(False)
-                    species.setInitialAmount(random.randint(5, 100))
-                    species.setSubstanceUnits('mole')
-                    species.setBoundaryCondition(False)
-                    species.setHasOnlySubstanceUnits(False)
                 case Compartment():
                     compartment: libsbml.Compartment = sbml_model.createCompartment()
-                    compartment.setId(f'c{int(obj.id)}')
-                    # print(f'c{obj.id}')
+                    compartment.setId(repr(obj))
+                    # compartment.setId(f'c{int(obj.id)}')
                     compartment.setConstant(True)
                     compartment.setSize(1)
                     compartment.setSpatialDimensions(3)
                     compartment.setUnits('litre')
+                case PhysicalEntity():
+                    species: libsbml.Species = sbml_model.createSpecies()
+                    species.setId(repr(obj))
+                    # species.setId(f's{obj.id}')
+                    species_compartment = (
+                        repr(list(obj.compartments)[0])
+                        if len(list(obj.compartments)) > 0
+                        else 'default_compartment'
+                    )
+                    species.setCompartment(species_compartment)
+                    species.setConstant(False)
+                    species.setInitialAmount(random.randint(1000, 1000))
+                    species.setSubstanceUnits('mole')
+                    species.setBoundaryCondition(False)
+                    species.setHasOnlySubstanceUnits(False)
                 case ReactionLikeEvent():
                     reaction: libsbml.Reaction = sbml_model.createReaction()
-                    reaction.setId(f'r{obj.id}')
+                    reaction.setId(repr(obj))
+                    # reaction.setId(f'r{obj.id}')
                     reaction.setReversible(obj.is_reversible)
                     reaction.setFast(obj.is_fast)
 
-                    for entity in obj.reactants:
+                    for entity in obj.physical_entities:
                         species_ref: libsbml.SpeciesReference
 
                         match entity.type:
@@ -438,11 +449,35 @@ class BiologicalSituationDefinition:
                             case EntityReaction.Type.OUTPUT:
                                 species_ref = sbml_model.createProduct()
 
-                        species_ref.setSpecies(f's{entity.physical_entity.id}')
+                        species_ref.setSpecies(repr(entity.physical_entity))
+                        # species_ref.setSpecies(f's{int(entity.physical_entity.id)}')
                         species_ref.setConstant(False)
                         species_ref.setStoichiometry(int(entity.stoichiometry or 0))
 
                     kinetic_law: libsbml.KineticLaw = reaction.createKineticLaw()
-                    kinetic_law.setMath(libsbml.parseL3Formula(''))
+                    kinetic_law.setMath(
+                        libsbml.parseL3Formula(
+                            '('
+                            + ' + '.join(
+                                map(
+                                    lambda entity: repr(entity.physical_entity),
+                                    obj.physical_entities,
+                                )
+                            )
+                            + ') * default_compartment'
+                        )
+                    )
 
         return (sbml_document, Environment(set()))
+
+    # TODO: rename into something which is actually
+    # from ._cypher import model_objects  # as __model_objects
+    # from ._sbml import yield_sbml_model
+
+
+# TODO: treat Natural as an int
+# return super().__int__()
+# def __new__(cls, value):
+#     return int.__new__(cls, int(value))
+# def __init__(self, value) -> None:
+#     super().__init__()

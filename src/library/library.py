@@ -1,6 +1,9 @@
 """ """
 
 from libsbml import SBMLDocument
+import neo4j
+
+from library.model import BiologicalSituationDefinition
 
 
 # yield
@@ -8,6 +11,10 @@ from libsbml import SBMLDocument
 # instance
 def yield_model_instance(model: SBMLDocument) -> SBMLDocument:
     return SBMLDocument()
+
+
+# def yield_sbml_model(definition: BiologicalSituationDefinition, driver: neo4j.Driver):
+#     pass
 
 
 # from libsbml import SBMLDocument

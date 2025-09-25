@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
             try:
                 rr = roadrunner.RoadRunner(sbml_str)
-                result = rr.simulate(0, 10, 1000)
+                result = rr.simulate(start=0, end=10, points=1000)
                 rr.plot(result=result, loc='upper left')
                 # print(result)
             except Exception as e:

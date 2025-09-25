@@ -113,6 +113,7 @@ class EntityReaction:
 
     physical_entity: PhysicalEntity
     order: Natural
+    # TODO: remove None
     stoichiometry: Stoichiometry | None
     type: Type
 
@@ -128,6 +129,8 @@ class EntityReaction:
 @dataclass(frozen=True)
 class ReactionLikeEvent(Event):
     physical_entities: set[EntityReaction]
+    # reactants: set[EntityReaction],
+    # products: set[EntityReaction],
     catalysts: set[PhysicalEntity] = field(default_factory=set)
     compartments: set[Compartment] = field(default_factory=set)
     is_reversible: bool = False
@@ -450,25 +453,48 @@ class BiologicalSituationDefinition:
                                 species_ref = sbml_model.createProduct()
 
                         species_ref.setSpecies(repr(entity.physical_entity))
-                        # species_ref.setSpecies(f's{int(entity.physical_entity.id)}')
                         species_ref.setConstant(False)
-                        species_ref.setStoichiometry(int(entity.stoichiometry or 0))
+                        # TODO: stoichiometry cant' be None
+                        assert entity.stoichiometry
+                        species_ref.setStoichiometry(int(entity.stoichiometry))
+
+                    # TODO https://gasgasgas.uk/michaelis-menten-enzyme-kinetics/
+                    # TODO createKineticLawParameter() ...
+                    parameter: libsbml.Parameter = sbml_model.createParameter()
+                    parameter.setId(f'param_{repr(obj)}')
+                    parameter.setConstant(True)
+                    # TODO: set random! This is part of Env? No, but must be set!
+                    # TODO: Well, I can just use this stuff repeatedly as long as I have a set of Parameter
+                    parameter.setValue(1.0)
 
                     kinetic_law: libsbml.KineticLaw = reaction.createKineticLaw()
                     kinetic_law.setMath(
                         libsbml.parseL3Formula(
-                            '('
-                            + ' + '.join(
+                            f'( param_{repr(obj)} *'
+                            + ' * '.join(
                                 map(
-                                    lambda entity: repr(entity.physical_entity),
-                                    obj.physical_entities,
+                                    lambda entity: f'({repr(entity.physical_entity)}^{int(entity.stoichiometry or 1)})',
+                                    filter(
+                                        lambda entity: entity.type
+                                        == EntityReaction.Type.INPUT,
+                                        obj.physical_entities,
+                                    ),
                                 )
                             )
-                            + ') * default_compartment'
+                            + ')'
+                            # + ') * default_compartment'
                         )
                     )
 
         return (sbml_document, Environment(set()))
+
+        # repr(entity.physical_entity)
+        # if (
+        #     not entity.stoichiometry
+        #     or int(entity.stoichiometry) == 1
+        # )
+        # else
+        # else repr(entity.physical_entity)
 
     # TODO: rename into something which is actually
     # from ._cypher import model_objects  # as __model_objects

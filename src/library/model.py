@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
 from operator import attrgetter
-from typing import TypeAlias
+from typing import Callable, TypeAlias
+from functools import cache
 
 import libsbml
 import neo4j
@@ -33,14 +34,15 @@ class Interval:
 
 @dataclass(frozen=True)
 class Natural:
-    value: int
+    # TODO: Python, private variables
+    _value: int
 
     def __post_init__(self) -> None:
         """Integer >= 0"""
         assert int(self) >= 0
 
     def __int__(self) -> int:
-        return self.value
+        return self._value
 
     def __repr__(self) -> str:
         return f'{self}'
@@ -55,10 +57,14 @@ class ReactomeDbId(Natural):
         return ReactomeDbId(int(match.group()))
 
     def __repr__(self) -> str:
-        return f'{self.value}'
+        return f'{self._value}'
 
 
+@dataclass(frozen=True)
 class Stoichiometry(Natural):
+    def __post_init__(self) -> None:
+        assert self._value > 0
+
     def __int__(self) -> int:
         return super().__int__()
 
@@ -106,35 +112,56 @@ class Event(DatabaseObject):
 
 
 @dataclass(frozen=True)
-class EntityReaction:
+class PhysicalEntityReactionLikeEvent:
     class Type(Enum):
         INPUT = 1
         OUTPUT = 2
 
     physical_entity: PhysicalEntity
     order: Natural
-    # TODO: remove None
-    stoichiometry: Stoichiometry | None
+    stoichiometry: Stoichiometry
     type: Type
 
     def __hash__(self) -> int:
         return self.physical_entity.__hash__()
 
     def __eq__(self, value: object, /) -> bool:
-        return isinstance(value, EntityReaction) and self.physical_entity.__eq__(
-            value.physical_entity
-        )
+        return isinstance(
+            value, PhysicalEntityReactionLikeEvent
+        ) and self.physical_entity.__eq__(value.physical_entity)
+
+    def __repr__(self) -> str:
+        return f'({self.physical_entity}^{int(self.stoichiometry)})'
+
+
+# TODO:
+# - enum with possible laws with constants to use
+# - in the description, you say the "default law" (0..1, otherwise LawOfMassAction is used)
+# - you can specify a custom law, as a function that takes a reaction like event, and outputs a law
+# - you have a dict, for which you specify the law for each reaction you want (yay!)
 
 
 @dataclass(frozen=True)
 class ReactionLikeEvent(Event):
-    physical_entities: set[EntityReaction]
-    # reactants: set[EntityReaction],
-    # products: set[EntityReaction],
+    physical_entities: set[PhysicalEntityReactionLikeEvent]
     catalysts: set[PhysicalEntity] = field(default_factory=set)
     compartments: set[Compartment] = field(default_factory=set)
     is_reversible: bool = False
     is_fast: bool = False
+
+    @cache
+    def reactants(self) -> set[PhysicalEntityReactionLikeEvent]:
+        return set(
+            filter(
+                lambda relationship: relationship.type
+                == PhysicalEntityReactionLikeEvent.Type.INPUT,
+                self.physical_entities,
+            )
+        )
+
+    @cache
+    def products(self) -> set[PhysicalEntityReactionLikeEvent]:
+        return self.physical_entities - self.reactants()
 
     def __hash__(self) -> int:
         return super().__hash__()
@@ -163,21 +190,35 @@ class Environment:
 #     compartments: set[Compartment]
 
 
+class BaseKineticLaw(Enum):
+    LAW_OF_MASS_ACTION = 1
+
+
+CustomKineticLaw: TypeAlias = Callable[[ReactionLikeEvent], MathML]
+
+KineticLaw: TypeAlias = BaseKineticLaw | CustomKineticLaw
+
+
 @dataclass(frozen=True)
-class BiologicalSituationDefinition:
-    target_entities: set[PhysicalEntity]
+class BiologicalScenarioDefinition:
+    target_physical_entities: set[PhysicalEntity]
     target_pathways: set[Pathway] | None
     constraints: list[MathML]
+    default_kinetic_law: KineticLaw = BaseKineticLaw.LAW_OF_MASS_ACTION
+    kinetic_laws: dict[ReactionLikeEvent, KineticLaw] = field(default_factory=dict)
+
     # TODO: write constraints in terms of PhysicalEntity, a formula on PhysicalEntity, ReactionLikeEvent
 
     def __post_init__(self) -> None:
-        assert not self.target_pathways or len(self.target_pathways) > 0
+        assert len(self.target_physical_entities) > 0 and (
+            not self.target_pathways or len(self.target_pathways) > 0
+        )
 
     @staticmethod
-    def from_sbml(sbml: libsbml.SBMLDocument) -> 'BiologicalSituationDefinition':
-        model: libsbml.Model = sbml.getModel()
-        model.getSpecies()
-        return BiologicalSituationDefinition(set(), None, [])
+    def from_sbml(sbml: libsbml.SBMLDocument) -> 'BiologicalScenarioDefinition':
+        # model: libsbml.Model = sbml.getModel()
+        # model.getSpecies()
+        return BiologicalScenarioDefinition(set(), None, [])
 
     def __model_objects(
         self, driver: neo4j.Driver
@@ -296,7 +337,9 @@ class BiologicalSituationDefinition:
                 compartments: compartments
             }) AS reactions;
             """,
-            target_entities=list(map(lambda e: int(e.id), self.target_entities)),
+            target_entities=list(
+                map(lambda e: int(e.id), self.target_physical_entities)
+            ),
         )
 
         val = records[FIRST][FIRST]
@@ -306,7 +349,7 @@ class BiologicalSituationDefinition:
                     id=reaction['dbId'],
                     physical_entities=set(
                         map(
-                            lambda entity: EntityReaction(
+                            lambda entity: PhysicalEntityReactionLikeEvent(
                                 physical_entity=PhysicalEntity(
                                     ReactomeDbId(entity['dbId']),
                                     compartments=set(
@@ -320,20 +363,20 @@ class BiologicalSituationDefinition:
                                 ),
                                 stoichiometry=Stoichiometry(entity['stoichiometry']),
                                 order=Natural(entity['order']),
-                                type=EntityReaction.Type.INPUT,
+                                type=PhysicalEntityReactionLikeEvent.Type.INPUT,
                             ),
                             reaction['products'],
                         )
                     )
                     | set(
                         map(
-                            lambda entity: EntityReaction(
+                            lambda entity: PhysicalEntityReactionLikeEvent(
                                 physical_entity=PhysicalEntity(
                                     ReactomeDbId(entity['dbId'])
                                 ),
                                 stoichiometry=Stoichiometry(entity['stoichiometry']),
                                 order=Natural(entity['order']),
-                                type=EntityReaction.Type.OUTPUT,
+                                type=PhysicalEntityReactionLikeEvent.Type.OUTPUT,
                             ),
                             reaction['reactants'],
                         )
@@ -443,48 +486,56 @@ class BiologicalSituationDefinition:
                     reaction.setReversible(obj.is_reversible)
                     reaction.setFast(obj.is_fast)
 
-                    for entity in obj.physical_entities:
+                    for relationship in obj.physical_entities:
                         species_ref: libsbml.SpeciesReference
 
-                        match entity.type:
-                            case EntityReaction.Type.INPUT:
+                        match relationship.type:
+                            case PhysicalEntityReactionLikeEvent.Type.INPUT:
                                 species_ref = sbml_model.createReactant()
-                            case EntityReaction.Type.OUTPUT:
+                            case PhysicalEntityReactionLikeEvent.Type.OUTPUT:
                                 species_ref = sbml_model.createProduct()
 
-                        species_ref.setSpecies(repr(entity.physical_entity))
+                        species_ref.setSpecies(repr(relationship.physical_entity))
                         species_ref.setConstant(False)
                         # TODO: stoichiometry cant' be None
-                        assert entity.stoichiometry
-                        species_ref.setStoichiometry(int(entity.stoichiometry))
+                        assert relationship.stoichiometry
+                        species_ref.setStoichiometry(int(relationship.stoichiometry))
 
                     # TODO https://gasgasgas.uk/michaelis-menten-enzyme-kinetics/
                     # TODO createKineticLawParameter() ...
-                    parameter: libsbml.Parameter = sbml_model.createParameter()
-                    parameter.setId(f'param_{repr(obj)}')
-                    parameter.setConstant(True)
+                    forward_parameter: libsbml.Parameter = sbml_model.createParameter()
+                    forward_parameter.setId(f'param_{repr(obj)}')
+                    forward_parameter.setConstant(True)
                     # TODO: set random! This is part of Env? No, but must be set!
                     # TODO: Well, I can just use this stuff repeatedly as long as I have a set of Parameter
-                    parameter.setValue(1.0)
+                    forward_parameter.setValue(1.0)
 
                     kinetic_law: libsbml.KineticLaw = reaction.createKineticLaw()
-                    kinetic_law.setMath(
-                        libsbml.parseL3Formula(
-                            f'( param_{repr(obj)} *'
-                            + ' * '.join(
-                                map(
-                                    lambda entity: f'({repr(entity.physical_entity)}^{int(entity.stoichiometry or 1)})',
-                                    filter(
-                                        lambda entity: entity.type
-                                        == EntityReaction.Type.INPUT,
-                                        obj.physical_entities,
-                                    ),
-                                )
-                            )
-                            + ')'
-                            # + ') * default_compartment'
+
+                    law_of_mass_action = ' * '.join(
+                        map(
+                            lambda relationship: f'({repr(relationship.physical_entity)}^{int(relationship.stoichiometry)})',
+                            obj.reactants(),
                         )
                     )
+
+                    # if obj.is_reversible:
+                    # product = ' * '.join(
+                    #
+                    # )
+
+                    kinetic_law.setMath(
+                        libsbml.parseL3Formula(
+                            f'(param_{repr(obj)} * {law_of_mass_action})'
+                        )
+                    )
+
+        # + ') * default_compartment'
+        # filter(
+        #     lambda entity: entity.type
+        #     == PhysicalEntityReactionLikeEvent.Type.INPUT,
+        #     obj.physical_entities,
+        # ),
 
         return (sbml_document, Environment(set()))
 
@@ -507,3 +558,16 @@ class BiologicalSituationDefinition:
 #     return int.__new__(cls, int(value))
 # def __init__(self, value) -> None:
 #     super().__init__()
+
+
+# class LawOfMassAction:
+#     pass
+
+# LawOfMassAction: TypeAlias = tuple[]
+
+
+# CONVENIENCE_KINETIC_LAW = 2
+
+
+# class KineticLaw:
+#     pass

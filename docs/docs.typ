@@ -240,7 +240,7 @@ Average quantities
 #logic[MathML = String matching] https://www.w3.org/1998/Math/MathML/ \
 #logic[MathMLBoolean = String matching #logic[MathML] returning a boolean] \
 #logic[MathMLNumeric = String matching #logic[MathML] returning a number] \
-#logic[Stoichiometry = Natural]
+#logic[Stoichiometry = Natural > 0]
 
 *Reactome*
 

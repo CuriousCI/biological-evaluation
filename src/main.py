@@ -7,13 +7,10 @@ import sys
 
 import libsbml
 import roadrunner
-from libsbml import (
-    SBMLDocument,
-)
 from neo4j import GraphDatabase
 
 from library.model import (
-    BiologicalSituationDefinition,
+    BiologicalScenarioDefinition,
     Pathway,
     PhysicalEntity,
     ReactomeDbId,
@@ -24,9 +21,9 @@ AUTH = ('noe4j', 'neo4j')
 REACTOME_DATABASE = 'graph.db'
 
 if __name__ == '__main__':
-    biological_situation_definition: BiologicalSituationDefinition = (
-        BiologicalSituationDefinition(
-            target_entities={PhysicalEntity(ReactomeDbId(202124))},
+    biological_scenario_definition: BiologicalScenarioDefinition = (
+        BiologicalScenarioDefinition(
+            target_physical_entities={PhysicalEntity(ReactomeDbId(202124))},
             target_pathways={
                 Pathway(ReactomeDbId(162582)),
                 Pathway(ReactomeDbId(168256)),
@@ -40,24 +37,26 @@ if __name__ == '__main__':
     ) as driver:
         try:
             driver.verify_connectivity()
-            model: SBMLDocument
-            (model, _) = biological_situation_definition.yield_sbml_model(driver)
-            sbml_str = libsbml.writeSBMLToString(model)
+
+            sbml_doc: libsbml.SBMLDocument
+            (sbml_doc, _) = biological_scenario_definition.yield_sbml_model(driver)
+            sbml_str = libsbml.writeSBMLToString(sbml_doc)
+
             with open('test.sbml', 'w') as file:
                 file.write(sbml_str)
 
-            try:
-                rr = roadrunner.RoadRunner(sbml_str)
-                result = rr.simulate(start=0, end=10, points=1000)
-                rr.plot(result=result, loc='upper left')
-                # print(result)
-            except Exception as e:
-                # http://sys-bio.github.io/roadrunner/docs-build/tutorial/tutorial.html
-                print(e)
-
+            #     # http://sys-bio.github.io/roadrunner/docs-build/tutorial/tutorial.html
+            rr = roadrunner.RoadRunner(sbml_str)
+            result = rr.simulate(start=0, end=10, points=1000)
+            rr.plot(result=result, loc='upper left')
         except Exception as exception:
             print(exception)
             sys.exit(1)
+
+    # try:
+    # print(result)
+    # except Exception as e:
+    #     print(e)
 
     virtual_patients = set()
 

@@ -91,3 +91,15 @@ RETURN DISTINCT pathway.displayName
 // DNA replication and repair
 // Innate Immune System
 // Drosophila signaling pathways
+
+// check if any input / output in a reaction has no stoichiometry
+// It never happens that stoichiometry is null
+MATCH path = (n:PhysicalEntity)-[relation:input|output]-(r:ReactionLikeEvent)
+WHERE relation.stoichiometry IS NULL
+RETURN path
+LIMIT 1;
+
+// check an example of reverseReaction
+MATCH path = (r:ReactionLikeEvent)-[:reverseReaction]-(p:ReactionLikeEvent)
+RETURN path
+LIMIT 1

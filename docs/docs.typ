@@ -55,15 +55,15 @@
 
 == Introduction
 
-#proj-name is a tool meant to help study the likelihood of a given situation in
-a biological system.
+#proj-name is a tool meant to help study the likelihood of a given scenario in a
+biological system.
 
 Given a set of _target species_, a set of constraints on the _target species_
-(constraints which model a situation that could present, for example, in a
+(constraints which model a scenario that could present, for example, in a
 disease) and by taking into account all the reactions within a set _target
     pathways_ that lead to the production, both directly and indirectly, of the
 _target species_, the goal is to find a subset of virtual patients for the
-described situation.
+described scenario.
 
 #TODO[
     find papers in literature that do similar things; what does this method add
@@ -77,10 +77,10 @@ described situation.
 
 == Requirements
 
-The basic idea behind the software is to take the description of a model (with
-_target species_, _target pathways_, constraints on the _target species_, and
-the parameters $epsilon, delta in (0, 1)$ for the evalation of the constraints),
-to generate a SBML model with
+The basic idea behind the software is to take the description of a scenario
+(with _target species_, _target pathways_, constraints on the _target species_,
+and the parameters $epsilon, delta in (0, 1)$ for the evalation of the
+constraints), to generate a SBML model with
 - all the reactions within the _target pathways_ that, both directly and
     indirectly, generate the _target species_
 - parameters for the reactions' speeds
@@ -164,7 +164,7 @@ TODO: helper functions are described at page 15
 // system.
 
 
-// Different situations can be compared by comparing the subsets of virtual
+// Different scnearios can be compared by comparing the subsets of virtual
 // patients obtained from those models.
 
 
@@ -236,7 +236,7 @@ Average quantities
 *Math*
 
 #logic[Natural = Integer >= 0] \
-#logic[Interval = (min: Real [0..1], max: Real [0..1])] \
+#logic[Interval = (lower_bound: Real [0..1], upper_bound: Real [0..1])] \
 #logic[MathML = String matching] https://www.w3.org/1998/Math/MathML/ \
 #logic[MathMLBoolean = String matching #logic[MathML] returning a boolean] \
 #logic[MathMLNumeric = String matching #logic[MathML] returning a number] \
@@ -265,20 +265,20 @@ Average quantities
 == Interval
 
 The #logic[Interval] type represents an open interval in $RR$ of the type
-$(#logic[min], #logic[max])$ s.t.
-- when #logic[min] is not defined, it is interpreted as $-infinity$
-- when #logic[max] is not defined, it is interpreted as $+infinity$
+$(#logic[lower_bound], #logic[upper_bound])$ s.t.
+- when #logic[lower_bound] is not defined, it is interpreted as $-infinity$
+- when #logic[upper_bound] is not defined, it is interpreted as $+infinity$
 
 #constraint(
-    [C.Interval.min_leq_max],
+    [C.Interval.lower_bound_leq_upper_bound],
     ```
-    forall interval, interval_min, interval_max
+    forall interval, interval_lower_bound, interval_upper_bound
         (
             Interval(interval) and
-            min(interval, interval_min) and
-            max(interval, interval_max)
+            lower_bound(interval, interval_lower_bound) and
+            upper_bound(interval, interval_upper_bound)
         ) ->
-            interval_min <= interval_max
+            interval_lower_bound <= interval_upper_bound
     ```,
 )
 
@@ -308,8 +308,8 @@ in the Reactome Pathway Browser @reactome-pathway-browser. It is useful to
 accept it in the description of the models.
 
 #operation(
-    [StableIdVersion_into_ReactomeDbId],
-    args: [stable_id],
+    [from_stable_id_version],
+    args: [stable_id_version: StableIdVersion],
     type: [ReactomeDbId],
     post: [. . .],
 )

@@ -1,0 +1,77 @@
+[project]
+name = "bsys-eval"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "antlr4-python3-runtime==4.13.1",
+    "apricopt==0.0.2a3.dev21",
+    "attrs==25.3.0",
+    "chaospy==4.3.20",
+    "colorama==0.4.6",
+    "contourpy==1.3.2",
+    "cycler==0.12.1",
+    "fonttools==4.59.0",
+    "future==1.0.0",
+    "importlib-metadata==8.7.0",
+    "jsonschema==4.25.0",
+    "jsonschema-specifications==2025.4.1",
+    "kiwisolver==1.4.8",
+    "libroadrunner==2.8.0",
+    "matplotlib==3.10.3",
+    "mpmath==1.3.0",
+    "neo4j==5.28.1",
+    "numpoly==1.3.6",
+    "numpy==2.3.1",
+    "packaging==25.0",
+    "pandas==2.3.1",
+    "petab==0.5.0",
+    "pillow==11.3.0",
+    "pyarrow==21.0.0",
+    "pynomadbbo==4.5.1",
+    "pyparsing==3.2.3",
+    "pyqt5==5.15.11",
+    "pyqt5-qt5==5.15.17",
+    "pyqt5-sip==12.17.0",
+    "python-dateutil==2.9.0.post0",
+    "python-libsbml==5.20.5",
+    "pytz==2025.2",
+    "pyyaml==6.0.2",
+    "referencing==0.36.2",
+    "rpds-py==0.26.0",
+    "scipy==1.16.0",
+    "seaborn==0.13.2",
+    "setuptools==80.9.0",
+    "six==1.17.0",
+    "sympy==1.14.0",
+    "tqdm==4.67.1",
+    "tzdata==2025.2",
+    "zipp==3.23.0",
+]
+
+[dependency-groups]
+dev = []
+
+[tool.ruff]
+line-length = 80
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "E501", 
+    "S101", 
+    "D105",
+    "B019" # Use of `functools.lru_cache` or `functools.cache` on methods can lead to memory leaks
+]
+
+[tool.ruff.format]
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
+
+[tool.basedpyright]
+reportUnknownParameterType = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportUnknownVariableType = false
+reportUnknownMemberType = false

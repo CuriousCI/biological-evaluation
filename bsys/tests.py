@@ -1,4 +1,4 @@
-"""bsys-eval
+"""bsys-eval.
 
 Tool to determine the plausability of biological systems states through virtual witnesses.
 """
@@ -16,11 +16,11 @@ from library.model import (
     ReactomeDbId,
 )
 
-NEO4J_URL_REACTOME = 'neo4j://localhost:7687'
-AUTH = ('noe4j', 'neo4j')
-REACTOME_DATABASE = 'graph.db'
+NEO4J_URL_REACTOME = "neo4j://localhost:7687"
+AUTH = ("noe4j", "neo4j")
+REACTOME_DATABASE = "graph.db"
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     biological_scenario_definition: BiologicalScenarioDefinition = (
         BiologicalScenarioDefinition(
             target_physical_entities={PhysicalEntity(ReactomeDbId(202124))},
@@ -39,16 +39,18 @@ if __name__ == '__main__':
             driver.verify_connectivity()
 
             sbml_doc: libsbml.SBMLDocument
-            (sbml_doc, _) = biological_scenario_definition.yield_sbml_model(driver)
+            (sbml_doc, _) = biological_scenario_definition.yield_sbml_model(
+                driver
+            )
             sbml_str = libsbml.writeSBMLToString(sbml_doc)
 
-            with open('test.sbml', 'w') as file:
+            with open("test.sbml", "w") as file:
                 file.write(sbml_str)
 
             #     # http://sys-bio.github.io/roadrunner/docs-build/tutorial/tutorial.html
             rr = roadrunner.RoadRunner(sbml_str)
             result = rr.simulate(start=0, end=10, points=1000)
-            rr.plot(result=result, loc='upper left')
+            rr.plot(result=result, loc="upper left")
         except Exception as exception:
             print(exception)
             sys.exit(1)
@@ -172,8 +174,6 @@ if __name__ == '__main__':
 #     print(val)
 
 # set(map(lambda e: e.standard_id, physical_entities))
-
-# TODO: simulate until reaching equilibrium
 
 # rr_instance: ModelInstance = rr.load_model('test.sbml')
 # rr_instance.set_parameter('par1', 15.5)
@@ -472,387 +472,3 @@ if __name__ == '__main__':
 # # )
 #
 # # session/driver usage
-
-
-# def create_simple_model(
-#     physical_entities: set[model.PhysicalEntity],
-#     reactions: list[model.ReactionLikeEvent],
-# ) -> model.SBMLDocumentString | None:
-#     try:
-#         document: libsbml.SBMLDocument = SBMLDocument(3, 1)
-#     except ValueError:
-#         return None
-#
-#     sbml_model: libsbml.Model = document.createModel()
-#     sbml_model.setTimeUnits('second')
-#     sbml_model.setExtentUnits('mole')
-#     sbml_model.setSubstanceUnits('mole')
-#
-#     compartment: libsbml.Compartment = sbml_model.createCompartment()
-#     compartment.setId('c1')  # TODO: random UUID64, or just id
-#     compartment.setConstant(True)
-#     compartment.setSize(1)
-#     compartment.setSpatialDimensions(3)
-#     compartment.setUnits('litre')
-#
-#     for physical_entity in physical_entities:
-#         species: libsbml.Species = sbml_model.createSpecies()
-#         species.setId(str(physical_entity.standard_id))
-#         species.setCompartment('c1')
-#         species.setConstant(False)
-#         species.setInitialAmount(random.randint(5, 100))
-#         species.setSubstanceUnits('mole')
-#         species.setBoundaryCondition(False)
-#         species.setHasOnlySubstanceUnits(False)
-#
-#     for id, reaction in enumerate(reactions):
-#         sbml_reaction: libsbml.Reaction = sbml_model.createReaction()
-#         sbml_reaction.setId(f'r{id}')
-#         sbml_reaction.setReversible(False)
-#         sbml_reaction.setFast(False)
-#
-#         for reactant in reaction.reactants:
-#             reactant_ref: libsbml.SpeciesReference = sbml_model.createReactant()
-#             reactant_ref.setSpecies(str(reactant.standard_id))
-#             reactant_ref.setConstant(True)
-#             reactant_ref.setStoichiometry(reactant.stoichiometry)
-#
-#         for product in reaction.products:
-#             product_ref: libsbml.SpeciesReference = sbml_model.createProduct()
-#             product_ref.setSpecies(str(product.standard_id))
-#             product_ref.setConstant(True)
-#             product_ref.setStoichiometry(product.stoichiometry)
-#
-#         math_ast = parseL3Formula(
-#             '('
-#             + ' + '.join(map(lambda r: f'{r.standard_id}', reaction.reactants))
-#             + ') * c1'
-#         )
-#         kinetic_law: KineticLaw = sbml_reaction.createKineticLaw()
-#         kinetic_law.setMath(math_ast)
-#
-#     return writeSBMLToString(document)
-
-
-# def query(driver: neo4j.Driver) -> list[Any]:
-#     # CROSSLINKED_FIBRIN_MULTIMER_REACTION_DB_ID = 158750
-#     PLAT_DB_ID = 158754
-#
-#     # records, summary, keys
-#     records, _, _ = driver.execute_query(
-#         """
-#         MATCH path = (n {dbId: $dbId})<-[*..3]-(reaction:ReactionLikeEvent)
-#         WHERE NONE(
-#             relationship IN relationships(path)
-#             WHERE type(relationship) IN [
-#                 'author', 'modified', 'edited', 'authored', 'reviewed',
-#                 'created', 'updatedInstance', 'revised', 'inferredTo'
-#             ]
-#         )
-#         CALL {
-#             WITH reaction
-#             MATCH (entity)-[relationship:input]-(reaction)
-#             RETURN collect({
-#                 stId: entity.stId,
-#                 displayName: entity.displayName,
-#                 stoichiometry: relationship.stoichiometry,
-#                 order: relationship.order
-#             }) AS reactants
-#         }
-#         CALL {
-#             WITH reaction
-#             MATCH (entity)-[relationship:output]-(reaction)
-#             RETURN collect({
-#                 stId: entity.stId,
-#                 displayName: entity.displayName,
-#                 stoichiometry: relationship.stoichiometry,
-#                 order: relationship.order
-#             }) AS products
-#         }
-#         RETURN
-#             reaction.stId AS stId, reaction.displayName AS displayName,
-#             reactants, products
-#         """,
-#         dbId=PLAT_DB_ID,
-#         database_=REACTOME_DATABASE,
-#     )
-#
-#     return records
-
-
-# for row in records:
-#     for val in row:
-
-# for reaction in val:
-#     reaction_like_events.add(
-
-# print(json.dumps(records, indent=4))
-
-
-# print(list(map(vars, reaction_like_events)))
-# print(list(map(vars, physical_entities)))
-# print(list(map(vars, compartments)))
-# print()
-# print()
-
-# try:
-# except Exception as e:
-#     print(e)
-#
-# return set()
-
-
-# set[DatabaseObject
-# with driver.session() as session:
-# with session.begin_transaction() as transaction:
-#     transaction.run()
-# session.execute_write
-
-# TODO: transaction
-# with driver.session() as session:
-#     pass
-# try:
-# print(res)
-# except Exception as e:
-#     print(e)
-# print('test')
-# T = TypeVar('T')
-# def union(a: set[T], b: set[T]) -> set[T]:
-#     return a.union(b)
-
-# RETURN apoc.convert.toJson(COLLECT({reaction: reaction.dbId, reactants: reactants, products: products})) AS reactions;
-# target_entities=list(self.target_entities),
-# physical_entities: set[PhysicalEntity] = set()
-
-# lambda entity_reaction: entity_reaction.physical_entity,
-# .extend(reaction['products'] or []),
-# .union(set(map(lambda p: p, reaction['products']))),
-# reactants=set(PhysicalEntity(id=ReactomeDbId(10))),
-# print([record.keys() for record in records])
-# print(records)
-
-# TODO:
-# - NewUnitDefinitions
-# - CompartmentDefinition (for each PhysicalEntity)
-# - SpeciesDefinition (one per PhysicalEntity)
-# - ReactionDefinition (+ stuff it needs!)
-# -----------------
-# - Parameter
-# - Constraint
-
-
-# @staticmethod
-# def from_json(json: Any) -> 'BiologicalSituationDefinition':
-#     return BiologicalSituationDefinition(
-#         set(json['target_entities']),
-#         json['target_pathways'] if 'target_pathways' in json else None,
-#         [],
-#     )
-
-
-# from libsbml import Math
-#     def __hash__(self) -> int:
-#         return self.standard_id.__hash__()
-#
-#     def __eq__(self, value: object, /) -> bool:
-#         return 'standard_id' in value.__dict__ and self.standard_id.__eq__(
-#             value.__dict__['standard_id']
-#         )
-#
-#     def __repr__(self) -> str:
-#         return f'{self.standard_id}'
-
-# def __init__(
-#     self,
-# ) -> None:
-#     pass
-
-
-# Biological
-# Model
-# Definition
-# class BiologicalModelDefinition:
-#     pass
-
-
-# class Model:
-#     pass
-
-
-# # [SBML 3.2.2 | ch. 3.1.7]
-# class StandardId(UserString):
-#     """Class docstrings go here."""
-#
-#     def __init__(self, value) -> None:
-#         """Method docstrings go here."""
-#         # a..z A..Z
-#         # 0..9
-#         # (letter | _) 'a..z A..Z 0..9' *
-#         super().__init__(value.replace('-', '_'))
-#
-#
-# PhysicalEntityStandardId: TypeAlias = StandardId
-#
-#
-# class RationalGT0(float):
-#     def __init__(self, value) -> None:
-#         if value <= 0:
-#             raise TypeError('Only reals > 0 allowed')
-#         float.__init__(value)
-
-
-# @dataclass(repr=False, eq=False, frozen=True)
-# class PhysicalEntity:
-#     standard_id: StandardId
-#     display_name: str
-#
-#     def __hash__(self) -> int:
-#         return self.standard_id.__hash__()
-#
-#     def __eq__(self, value: object, /) -> bool:
-#         return 'standard_id' in value.__dict__ and self.standard_id.__eq__(
-#             value.__dict__['standard_id']
-#         )
-#
-#     def __repr__(self) -> str:
-#         return f'{self.standard_id}'
-
-
-# class PhysicalEntityInReaction(PhysicalEntity):
-#     def __init__(
-#         self, standard_id: StandardId, display_name: str, stoichiometry: RationalGT0
-#     ) -> None:
-#         super().__init__(standard_id, display_name)
-#         self.stoichiometry = stoichiometry
-
-
-# Reactant: TypeAlias = PhysicalEntityInReaction
-# ReactionProduct: TypeAlias = PhysicalEntityInReaction
-
-
-# class ReactionLikeEvent:
-#     def __init__(
-#         self, reactants: set[Reactant], products: set[ReactionProduct]
-#     ) -> None:
-#         self.reactants = reactants
-#         self.products = products
-# SBMLDocumentString: TypeAlias = str
-
-# assert False, 'unreachable'
-
-
-# class StableIdVersion(int):
-#     pass
-# database_id: ReactomeDbId
-
-# def __init__(self, seq: str) -> None:
-#     if not re.compile('^R-[A-Z]{3}-[0-9]{1,8}[.][0-9]{1,3}$').match(seq):
-#         raise Exception()
-#
-#     super().__init__(seq)
-#
-# def to_database_id(self) -> ReactomeDbId:
-#     match = re.search('R-[A-Z]{3}-([0-9]{1,8})[.][0-9]{1,3}$', str(self))
-#     if match is not None:
-#         return ReactomeDbId(match.group())
-#
-#     assert False, 'unreachable'
-#
-
-
-# class StableIdVersion(UserString):
-#     def __init__(self, seq: str) -> None:
-#         if not re.compile('^R-[A-Z]{3}-[0-9]{1,8}[.][0-9]{1,3}$').match(seq):
-#             raise Exception()
-#
-#         super().__init__(seq)
-#
-#     def to_database_id(self) -> ReactomeDbId:
-#         match = re.search('R-[A-Z]{3}-([0-9]{1,8})[.][0-9]{1,3}$', str(self))
-#         if match is not None:
-#             return ReactomeDbId(match.group())
-#
-#         assert False, 'unreachable'
-
-
-# def __init__(self, id: ReactomeDbId | StableIdVersion) -> None:
-#     # self.database_id = id
-#     pass
-
-# class SimpleDatabaseObject(DatabaseObject):
-#     database_id: ReactomeDbId
-
-
-# @dataclass(repr=False, eq=False, frozen=True)
-# class DatabaseObjectWithStableId(DatabaseObject):
-#     stable_id: StableIdVersion | None = None
-#
-#     def __post_init__(self) -> None:
-#         """[C.DatabaseObjectWithStableId.either_database_id_or_stable_id_is_defined]"""
-#         if self.database_id is None and self.stable_id is None:
-#             raise Exception()
-#
-#     def __hash__(self) -> int:
-#         if self.database_id is not None:
-#             return self.database_id.__hash__()
-#         elif self.stable_id is not None:
-#             return self.stable_id.to_database_id().__hash__()
-#
-#         assert False, 'unreachable'
-#
-#         # return (
-#         #     self.database_id.__hash__()
-#         #     if self.database_id is not None
-#         #     else  self.stable_id.to_database_id().__hash__()
-#         # )
-#
-#     def __eq__(self, value: object, /) -> bool:
-#         return 'database_id' in value.__dict__ and self.database_id.__eq__(
-#             value.__dict__['database_id']
-#         )
-
-
-# match id:
-#     case int():
-#         return ReactomeDbId(id)
-#     case _:
-
-# if match is None:
-#     return None
-
-
-# class StableIdVersion(UserString):
-#     def __init__(self, seq: str) -> None:
-#         if not re.compile('^R-[A-Z]{3}-[0-9]{1,8}[.][0-9]{1,3}$').match(seq):
-#             raise Exception()
-#
-#         super().__init__(seq)
-#
-#     def to_database_id(self) -> ReactomeDbId:
-#         match = re.search('R-[A-Z]{3}-([0-9]{1,8})[.][0-9]{1,3}$', str(self))
-#         if match is not None:
-#             return ReactomeDbId(match.group())
-#
-#         assert False, 'unreachable'
-
-
-# def into_reactome_id(id: StableIdVersion) -> ReactomeDbId:
-#     match = re.search('R-[A-Z]{3}-([0-9]{1,8})[.][0-9]{1,3}$', str(id))
-#     assert match is not None
-#     return ReactomeDbId(match.group())
-
-# ReactomeDbId: TypeAlias = int
-
-# val: int
-#
-# def __post_init__(self) -> None:
-#     """ReactomeDbId = Integer >= 0"""
-#     assert self.val >= 0
-
-
-# @dataclass(frozen=True)
-# val: int
-#
-# def __post_init__(self) -> None:
-#     """Stoichiometry = Integer >= 0"""
-#     assert self.val >= 0

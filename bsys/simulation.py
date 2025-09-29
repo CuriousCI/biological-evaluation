@@ -2,13 +2,13 @@
 
 import random
 
-from bsys.model import VirtualPatientDescription
+from bsys.model import VirtualPatient, VirtualPatientDescription
 
 
 # TODO: user roadrunner for this
 def instantiate_virtual_patient(
     virtual_patient_description: VirtualPatientDescription,
-) -> list[tuple[str, float]]:
+) -> VirtualPatient:
     virtual_patient = []
 
     for parameter in virtual_patient_description.parameters:

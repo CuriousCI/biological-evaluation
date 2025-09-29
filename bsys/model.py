@@ -1,4 +1,4 @@
-"""s."""
+""""""
 
 import math
 import random
@@ -107,9 +107,9 @@ class SId:
     pass
 
 
-@dataclass(frozen=True)
-class Parameter:
-    id: SId
+# @dataclass(frozen=True)
+# class narameter:
+#     id: SId
 
 
 class Stoichiometry(NonZeroNatural):
@@ -207,7 +207,7 @@ class PhysicalEntityReactionLikeEvent:
 @dataclass(frozen=True, eq=False)
 class ReactionLikeEvent(Event):
     physical_entities: set[PhysicalEntityReactionLikeEvent]
-    catalysts: set[PhysicalEntity] = field(default_factory=set)
+    enzymes: set[PhysicalEntity] = field(default_factory=set)
     compartments: set[Compartment] = field(default_factory=set)
     is_reversible: bool = False
     is_fast: bool = False
@@ -233,22 +233,48 @@ class Pathway(Event):
     pass
 
 
+# @dataclass(frozen=True)
+# class Parameter:
+#     parameter: libsbml.Parameter
+#
+#     @override
+#     def __hash__(self) -> int:
+#         return self.parameter.getId().__hash__()
+#
+#     @override
+#     def __eq__(self, value: object, /) -> bool:
+#         return isinstance(value, Parameter) and self.parameter.getId().__eq__(
+#             value.parameter.getId(),
+#         )
+
+
+# virtual
+# patient
+# characterization
+# details
 @dataclass(frozen=True)
 class VirtualPatientDescription:
+    """A virtual patient is described by the set of parameters."""
+
     parameters: list[libsbml.Parameter]
-    # species: set[PhysicalEntity]
+    # species: set[Parameter]
+
+
+type SbmlParameterId = str
+
+type VirtualPatient = list[tuple[SbmlParameterId, float]]
 
 
 @dataclass(frozen=True)
 class Environment:
-    pass
+    species: list[tuple[libsbml.Species, Interval]]
 
 
 class BaseKineticLaw(Enum):
     """Well known kinetic laws."""
 
     LAW_OF_MASS_ACTION = 1
-    # CONVENIENCE_KINETIC_LAW = 2
+    CONVENIENCE_KINETIC_LAW = 2
 
     def __call__(
         self,
@@ -286,7 +312,7 @@ class BaseKineticLaw(Enum):
                     reverse_reaction_formula = f"(k_reverse_{reaction_like_event} * {'*'.join(map(repr, reaction_like_event.products()))})"
 
                 hill_component: str | None = None
-                if reaction_like_event.catalysts:
+                if reaction_like_event.enzymes:
                     # if(sbo == SBO_ACTIVATOR || sbo == SBO_ENZYME || sbo == SBO_STIMULATOR) positive
                     # elif (sbo == SBO_INHIBITOR) negative
                     # h = 10
@@ -303,10 +329,13 @@ class BaseKineticLaw(Enum):
                     formula = f"{hill_component} * {formula}"
 
                 return (formula, parameters)
+            case BaseKineticLaw.CONVENIENCE_KINETIC_LAW:
+                return ("", [])
 
 
 type CustomKineticLaw = Callable[
-    [libsbml.Model, ReactionLikeEvent], tuple[MathML, list[libsbml.Parameter]]
+    [libsbml.Model, ReactionLikeEvent],
+    tuple[MathML, list[libsbml.Parameter]],
 ]
 
 type KineticLaw = BaseKineticLaw | CustomKineticLaw
@@ -499,7 +528,7 @@ class BiologicalScenarioDefinition:
                     )
                     for entity in reaction["reactants"]
                 },
-                catalysts={
+                enzymes={
                     PhysicalEntity(
                         ReactomeDbId(entity["id"]),
                     )
@@ -519,7 +548,7 @@ class BiologicalScenarioDefinition:
         physical_entities: set[PhysicalEntity] = reduce(
             set.union,
             (
-                reaction_like_event.catalysts
+                reaction_like_event.enzymes
                 | set(
                     map(
                         attrgetter("physical_entity"),

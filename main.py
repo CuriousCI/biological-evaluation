@@ -21,6 +21,51 @@ NEO4J_URL_REACTOME = "neo4j://localhost:7687"
 AUTH = ("noe4j", "neo4j")
 REACTOME_DATABASE = "graph.db"
 
+# TODO: energetical supplying / demanding / neutral reactions
+# TODO: this is a macroscopical + phenomenological approach (compared to microscopical simulation of single components)
+# TODO: CatalystActivity has order and stoichiometry
+# TODO: consider protein transportation too!!!!! How do you handle it better?
+# TODO: maybe for transport reactions there are better laws to use
+
+# TODO: can the kinetic law be part of the virtual patient? Like you can choose randomly a law, to describe the patient
+# TODO: rename catalysts in "enzymes" in UML too!
+# TODO: ok, find a way to tell if a entity is on the boundary and must be fueled! This is part of the environment!
+
+# TODO: quantitative + deterministic + continuos (or discrete?) + some reactions are reversible (not the whoel process) + (it shouldn't be periodic, right?) + model
+# TODO: Human Genome Project
+# TODO: Taylor, C.F. et al. (2003) A systematic approach to modeling, capturing, and disseminating proteomics experimental data. Nat. Biotechnol., 21, 247–254.
+# TODO: Gene Ontology
+# TODO: SBGN (maybe generate graphical model from the actual sbml one?)
+# TODO: MIRIAM could be useful, it defines standards for different types of systems biology models
+# TODO: at some point the system reaches and equilibrium, even with wildly different initial conditions
+
+
+# TODO: What question is the model supposed to answer?
+# TODO: Is it built to explain a surprising observation?
+# TODO: Is it built to relate separate observations with each other and with previous knowledge?
+# TODO: Is it built to make predictions, for example, about the effect of specific perturbations?
+# TODO: Often, a major function of models is to make assumptions about the underlying process explicit and, hence, testable.
+
+
+# TODO: (this is basically my case, the other 2, boolean networks and stochastic descriptions do not really matter) Network-based models describe and analyze properties, states, or dynamics of networks, that is, components and their interactions. Typical and frequently used network- centered modeling frameworks are as follows: Systems of ordinary differential equations for bio­ chemical reaction networks
+
+# TODO: maybe add other variables other than the mithical amount
+# TODO: This can be kinetic laws for individual reactions or instructions for combining input information arriving at a node from different edges as in Boolean networks. (kinetic laws is my stuff!)
+# TODO: ODE systems are deterministic
+
+# TODO: 1) Define the question that the model shall help to answer.
+# TODO: 2) Seek available information: Read the literature. Look at the available experimental data. Talk to experts in the field.
+# TODO: 3) Formulate a mental model.
+# TODO: 4) Decide on the modeling concept (network-based or rule-based, deterministic or stochastic, etc.)
+# TODO: 5) Formulate the first (simple) mathematical model.
+# TODO: 6) Test the model performance in comparison to the available data.
+# TODO: 7) Refine the model, estimate parameters.
+# TODO: 8) Analyze the system (parameter sensitivity, static and temporal behaviors, etc.)
+# TODO: 9) Make predictions for scenarios not used to construct the model such as gene knockout or overexpression, application of different stimuli or perturbations.
+# TODO: 10) Compare predictions and experimental results.
+
+
+# TODO:  to construct models in such ways that the disregarded properties do not compromise the basic results of the model. TODO: stabilità
 # TODO: integrate bionumbers for more useful models (from compartment sizes, with averages if undefined, to species quantities)
 # TODO: handle modifiers in reactions
 # TODO: download https://bionumbers.hms.harvard.edu/resources.aspx
@@ -61,7 +106,7 @@ def main() -> None:
                 signal_transduction,
                 immune_system,
             },
-            constraints=[f"{nitric_oxide} > 10"],
+            constraints=[f"{nitric_oxide} > 0.00005"],
         )
     )
 
@@ -83,17 +128,18 @@ def main() -> None:
         virtual_patients = []
         for _ in range(10):
             virtual_patient = sim.instantiate_virtual_patient(
-                virtual_patient_description
+                virtual_patient_description,
             )
 
             sbml_str = libsbml.writeSBMLToString(sbml_document)
             with Path("test.sbml").open("w") as file:
                 _ = file.write(sbml_str)
 
+            # ....
             rr = roadrunner.RoadRunner(sbml_str)
             rr.timeCourseSelections = ["species_202124"]
             result: numpy.ndarray = rr.simulate(start=0, end=100, points=100000)
-            if result[-1] > 0.01:
+            if result[-1][0] > 0.01:
                 virtual_patients.append(virtual_patient)
 
         print(virtual_patients)

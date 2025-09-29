@@ -103,3 +103,13 @@ LIMIT 1;
 MATCH path = (r:ReactionLikeEvent)-[:reverseReaction]-(p:ReactionLikeEvent)
 RETURN path
 LIMIT 1
+
+// Give examples of transport "reaction" (like with catalysts etc...)
+MATCH (c:CatalystActivity)
+WHERE c.displayName CONTAINS 'transport'
+RETURN c
+LIMIT 3
+
+// Specific examples of transport event
+MATCH path = (n {dbId: 10023106})-[:input|output]-(p:PhysicalEntity)
+RETURN path

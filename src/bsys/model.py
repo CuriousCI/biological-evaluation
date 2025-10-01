@@ -32,11 +32,17 @@ class Interval:
     def __post_init__(self) -> None:
         assert not self.lower_bound or not math.isnan(self.lower_bound)
         assert not self.upper_bound or not math.isnan(self.upper_bound)
-        # this is not code ??? [C.Interval.lower_bound_leq_upper_bound]
+        # TODO: [C.Interval.lower_bound_leq_upper_bound]
         assert (
             not self.lower_bound
             or not self.upper_bound
             or self.lower_bound <= self.upper_bound
+        )
+
+    def contains(self, value: float) -> bool:
+        """Check if a value is contained within a the interval."""
+        return (not self.lower_bound or value > self.lower_bound) and (
+            not self.upper_bound or value < self.upper_bound
         )
 
 
@@ -103,15 +109,6 @@ class ReactomeDbId(Natural):
         )
 
 
-class SId:
-    pass
-
-
-# @dataclass(frozen=True)
-# class narameter:
-#     id: SId
-
-
 class Stoichiometry(NonZeroNatural):
     """Stoichiometry is the relationships between the quantities of reactants."""
 
@@ -142,18 +139,22 @@ class CatalystActivity(DatabaseObject):
     pass
 
 
+@dataclass(frozen=True, eq=False)
 class Compartment(DatabaseObject):
-    @override
-    def __hash__(self) -> int:
-        return super().__hash__()
-
-    @override
-    def __eq__(self, value: object, /) -> bool:
-        return super().__eq__(value)
+    display_name: str
 
     @override
     def __repr__(self) -> str:
         return f"compartment_{super().__repr__()}"
+
+
+# @override
+# def __hash__(self) -> int:
+#     return super().__hash__()
+#
+# @override
+# def __eq__(self, value: object, /) -> bool:
+#     return super().__eq__(value)
 
 
 @dataclass(frozen=True, eq=False)
@@ -184,7 +185,6 @@ class PhysicalEntityReactionLikeEvent:
         OUTPUT = 2
 
     physical_entity: PhysicalEntity
-    order: Natural
     stoichiometry: Stoichiometry
     type: Type
 
@@ -248,26 +248,37 @@ class Pathway(Event):
 #         )
 
 
-# virtual
-# patient
-# characterization
-# details
+type SId = str
+
+type VirtualPatient = dict[SId, float]
+
+
 @dataclass(frozen=True)
-class VirtualPatientDescription:
+class VirtualPatientDetails:
     """A virtual patient is described by the set of parameters."""
 
+    # TODO: set()
     parameters: list[libsbml.Parameter]
+
+    def __call__(self) -> VirtualPatient:
+        virtual_patient = {}
+
+        for parameter in self.parameters:
+            # value = random.uniform(10e-6, 10e6)
+            value = random.uniform(0.01, 0.1)
+            virtual_patient[parameter.getId()] = value
+            parameter.setValue(value)
+
+        return virtual_patient
+
     # species: set[Parameter]
-
-
-type SbmlParameterId = str
-
-type VirtualPatient = list[tuple[SbmlParameterId, float]]
 
 
 @dataclass(frozen=True)
 class Environment:
-    species: list[tuple[libsbml.Species, Interval]]
+    """An environment dictates the initial conditions of the simulation (initial amounts of the species)."""
+
+    physical_entities: set[PhysicalEntity]
 
 
 class BaseKineticLaw(Enum):
@@ -348,6 +359,8 @@ class BiologicalScenarioDefinition:
     target_physical_entities: set[PhysicalEntity]
     target_pathways: set[Pathway] | None
     constraints: list[MathMLBool]
+    max_depth: NonZeroNatural | None = None
+    excluded_physical_entities: set[PhysicalEntity] = field(default_factory=set)
     default_kinetic_law: KineticLaw = BaseKineticLaw.LAW_OF_MASS_ACTION
     kinetic_laws: dict[ReactionLikeEvent, KineticLaw] = field(
         default_factory=dict,
@@ -437,7 +450,10 @@ class BiologicalScenarioDefinition:
                 CALL {
                     WITH e
                     MATCH (e)-[:compartment]-(compartment:Compartment)
-                    RETURN COLLECT({ id: compartment.dbId }) as compartments
+                    RETURN COLLECT({
+                        id: compartment.dbId,
+                        display_name: compartment.displayName
+                    }) as compartments
                 }
                 RETURN
                     COLLECT({
@@ -453,7 +469,10 @@ class BiologicalScenarioDefinition:
                 CALL {
                     WITH e
                     MATCH (e)-[:compartment]-(compartment:Compartment)
-                    RETURN COLLECT({ id: compartment.dbId }) as compartments
+                    RETURN COLLECT({
+                        id: compartment.dbId,
+                        display_name: compartment.displayName
+                    }) as compartments
                 }
                 RETURN
                     COLLECT({
@@ -466,12 +485,26 @@ class BiologicalScenarioDefinition:
             CALL {
                 WITH reactionLikeEvent
                 MATCH (reactionLikeEvent)-->(:CatalystActivity)-[:physicalEntity]->(e)
-                RETURN COLLECT({ id: e.dbId }) AS catalysts
+                CALL {
+                    WITH e
+                    MATCH (e)-[:compartment]-(compartment:Compartment)
+                    RETURN COLLECT({
+                        id: compartment.dbId,
+                        display_name: compartment.displayName
+                    }) as compartments
+                }
+                RETURN COLLECT({
+                    id: e.dbId,
+                    compartments: compartments
+                }) AS enzymes
             }
             CALL {
                 WITH reactionLikeEvent
                 MATCH (reactionLikeEvent)-[:compartment]-(compartment:Compartment)
-                RETURN COLLECT({ id: compartment.dbId }) AS compartments
+                RETURN COLLECT({
+                    id: compartment.dbId,
+                    display_name: compartment.displayName
+                }) AS compartments
             }
             CALL {
                 WITH reactionLikeEvent
@@ -482,7 +515,7 @@ class BiologicalScenarioDefinition:
                 id: reactionLikeEvent.dbId,
                 reactants: reactants,
                 products: products,
-                catalysts: catalysts,
+                enzymes: enzymes,
                 compartments: compartments,
                 is_reversible: reverseReactionLikeEvent
             }) AS reactions;
@@ -503,6 +536,7 @@ class BiologicalScenarioDefinition:
                                     ReactomeDbId(
                                         compartment["id"],
                                     ),
+                                    compartment["display_name"],
                                 )
                                 for compartment in entity["compartments"]
                             },
@@ -510,7 +544,7 @@ class BiologicalScenarioDefinition:
                         stoichiometry=Stoichiometry(
                             entity["stoichiometry"],
                         ),
-                        order=Natural(entity["order"]),
+                        # order=Natural(entity["order"]),
                         type=PhysicalEntityReactionLikeEvent.Type.INPUT,
                     )
                     for entity in reaction["products"]
@@ -523,7 +557,7 @@ class BiologicalScenarioDefinition:
                         stoichiometry=Stoichiometry(
                             entity["stoichiometry"],
                         ),
-                        order=Natural(entity["order"]),
+                        # order=Natural(entity["order"]),
                         type=PhysicalEntityReactionLikeEvent.Type.OUTPUT,
                     )
                     for entity in reaction["reactants"]
@@ -531,12 +565,19 @@ class BiologicalScenarioDefinition:
                 enzymes={
                     PhysicalEntity(
                         ReactomeDbId(entity["id"]),
+                        compartments={
+                            Compartment(
+                                ReactomeDbId(entity["id"]),
+                                entity["display_name"],
+                            )
+                            for entity in reaction["compartments"]
+                        },
                     )
-                    for entity in reaction["catalysts"]
+                    for entity in reaction["enzymes"]
                 },
                 compartments={
                     Compartment(
-                        ReactomeDbId(entity["id"]),
+                        ReactomeDbId(entity["id"]), entity["display_name"]
                     )
                     for entity in reaction["compartments"]
                 },
@@ -588,7 +629,7 @@ class BiologicalScenarioDefinition:
     def yield_sbml_model(
         self,
         driver: neo4j.Driver,
-    ) -> tuple[libsbml.SBMLDocument, VirtualPatientDescription, Environment]:
+    ) -> tuple[libsbml.SBMLDocument, VirtualPatientDetails, Environment]:
         """Produce a model by enriching the described BiologicalScenarioDefinition with external databases."""
         sbml_document: libsbml.SBMLDocument = libsbml.SBMLDocument(3, 1)
 
@@ -606,7 +647,8 @@ class BiologicalScenarioDefinition:
         default_compartment.setSpatialDimensions(3)
         default_compartment.setUnits("litre")
 
-        reactions_parameters: list[libsbml.Parameter] = []
+        virtual_patient_details: list[libsbml.Parameter] = []
+        env_physical_entities: set[PhysicalEntity] = set()
 
         for obj in self.__model_objects(driver):
             match obj:
@@ -619,6 +661,9 @@ class BiologicalScenarioDefinition:
                     compartment.setSize(1)
                     compartment.setSpatialDimensions(3)
                     compartment.setUnits("litre")
+                    compartment.appendNotes(
+                        f'<body xmlns="http://www.w3.org/1999/xhtml"><p>{obj.display_name}</p></body>',
+                    )
                 case PhysicalEntity():
                     species: libsbml.Species = sbml_model.createSpecies()
                     species.setId(repr(obj))
@@ -629,15 +674,20 @@ class BiologicalScenarioDefinition:
                     )
                     species.setCompartment(species_compartment)
                     species.setConstant(False)
-                    species.setInitialAmount(random.uniform(0.005, 0.01))
                     species.setSubstanceUnits("mole")
                     species.setBoundaryCondition(False)
                     species.setHasOnlySubstanceUnits(False)
+                    env_physical_entities.add(obj)
                 case ReactionLikeEvent():
                     reaction: libsbml.Reaction = sbml_model.createReaction()
                     reaction.setId(repr(obj))
                     reaction.setReversible(obj.is_reversible)
-                    reaction.setFast(obj.is_fast)
+                    reaction_compartment = (
+                        repr(next(iter(obj.compartments)))
+                        if len(list(obj.compartments)) > 0
+                        else "default_compartment"
+                    )
+                    reaction.setCompartment(reaction_compartment)
 
                     for relationship in obj.physical_entities:
                         species_ref: libsbml.SpeciesReference
@@ -662,15 +712,19 @@ class BiologicalScenarioDefinition:
 
                     fn = self.kinetic_laws.get(obj, self.default_kinetic_law)
                     formula, parameters = fn(sbml_model, obj)
-                    reactions_parameters.extend(parameters)
+                    virtual_patient_details.extend(parameters)
                     kinetic_law.setMath(
                         libsbml.parseL3Formula(formula),
                     )
+        for formula in self.constraints:
+            constraint: libsbml.Constraint = sbml_model.createConstraint()
+            constraint.setId("constraint_test")
+            constraint.setMath(libsbml.parseL3Formula(formula))
 
         return (
             sbml_document,
-            VirtualPatientDescription(reactions_parameters),
-            Environment(),
+            VirtualPatientDetails(virtual_patient_details),
+            Environment(env_physical_entities),
         )
 
 
@@ -682,3 +736,10 @@ class BiologicalScenarioDefinition:
 # time_rule: libsbml.Rule = sbml_model.createRateRule()
 # time_rule.setVariable("t_time")
 # time_rule.setFormula("1")
+
+
+# class SId:
+#     pass
+# @dataclass(frozen=True)
+# class narameter:
+#     id: SId

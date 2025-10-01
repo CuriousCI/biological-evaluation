@@ -11,7 +11,10 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = []
+dev = [
+    "sphinx>=8.2.3",
+    "sphinxawesome-theme>=5.3.2",
+]
 
 [tool.ruff]
 line-length = 80
@@ -22,7 +25,11 @@ ignore = [
     "E501", 
     "S101", 
     "D105",
-    "B019" # Use of `functools.lru_cache` or `functools.cache` on methods can lead to memory leaks
+    "B019", # Use of `functools.lru_cache` or `functools.cache` on methods can lead to memory leaks
+    "TD003",
+    "TD002",
+    "FIX002",
+    "S311"
 ]
 
 [tool.ruff.format]

@@ -224,3 +224,7 @@ wheels/
 docs/book
 /logs
 temp.job
+_build/
+_static/
+_templates/
+

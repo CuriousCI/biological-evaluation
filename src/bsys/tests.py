@@ -3,6 +3,82 @@
 Tool to determine the plausability of biological systems states through virtual witnesses.
 """
 
+
+# TODO: What question is the model supposed to answer?
+# TODO: Is it built to explain a surprising observation?
+# TODO: Is it built to relate separate observations with each other and with previous knowledge?
+# TODO: Is it built to make predictions, for example, about the effect of specific perturbations?
+# TODO: Often, a major function of models is to make assumptions about the underlying process explicit and, hence, testable.
+# TODO: (this is basically my case, the other 2, boolean networks and stochastic descriptions do not really matter) Network-based models describe and analyze properties, states, or dynamics of networks, that is, components and their interactions. Typical and frequently used network- centered modeling frameworks are as follows: Systems of ordinary differential equations for bio­ chemical reaction networks
+# TODO: This can be kinetic laws for individual reactions or instructions for combining input information arriving at a node from different edges as in Boolean networks. (kinetic laws is my stuff!)
+# TODO: ODE systems are deterministic
+
+# TODO: 1) Define the question that the model shall help to answer.
+# TODO: 2) Seek available information: Read the literature. Look at the available experimental data. Talk to experts in the field.
+# TODO: 3) Formulate a mental model.
+# TODO: 4) Decide on the modeling concept (network-based or rule-based, deterministic or stochastic, etc.)
+# TODO: 5) Formulate the first (simple) mathematical model.
+# TODO: 6) Test the model performance in comparison to the available data.
+# TODO: 7) Refine the model, estimate parameters.
+# TODO: 8) Analyze the system (parameter sensitivity, static and temporal behaviors, etc.)
+# TODO: 9) Make predictions for scenarios not used to construct the model such as gene knockout or overexpression, application of different stimuli or perturbations.
+# TODO: 10) Compare predictions and experimental results.
+# bionumbers_table = pandas.read_csv("bionumbers.csv")
+# units = set()
+# keywords: set[str] = set()
+# for _, row in bionumbers_table.iterrows():
+#     # if (
+#     #     difflib.SequenceMatcher(
+#     #         None,
+#     #         str(row["Properties"]).lower(),
+#     #         "nitric oxide",
+#     #     ).ratio()
+#     #     > 0.6
+#     # ):
+#     # print(*str(row["Keywords"]).split(","), sep=" | ")
+#     keywords = keywords | {
+#         keyword.lower().strip()
+#         for keyword in str(row["Keywords"]).split(",")
+#     }
+#
+#     if "nitric oxide" in str(row["Properties"]).lower():
+#         # print(row["Organism"], row["Range"], row["Units"])
+#         print(
+#             f"{row['Organism']} \n \t {row['Properties']} \n \t {row['Range']} {row['Units']}"
+#         )
+#     # print(line)
+#
+# print(*keywords, sep="\n")
+# exit(0)
+
+# compartments = [
+#     "endoplasmic reticulum membrane",
+#     "lysosomal membrane",
+#     "endoplasmic reticulum lumen",
+#     "phagocytic vesicle membrane",
+#     "lysosomal lumen",
+#     "plasma membrane",
+#     "phagocytic vesicle lumen",
+#     "cytosol",
+#     "extracellular region",
+#     "phagocytic vesicle",
+# ]
+# rows = []
+# with Path("bionumbers.csv").open() as file:
+#     reader = csv.DictReader(file)
+#     for row in reader:
+#         rows.append(row)
+#
+# for c in compartments:
+#     s = {
+#         f"{r['Value']} {r['Units']}"
+#         for r in rows
+#         if c in r["Keywords"].lower()
+#     }
+#     print(c, s)
+#
+# exit(1)
+
 import sys
 
 import libsbml

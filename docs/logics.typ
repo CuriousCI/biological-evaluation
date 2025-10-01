@@ -1,24 +1,10 @@
 #let indent-width = 1em
-// #let indent-width = 1.2em
 
 #let comment-color = luma(80)
 #let association-color = rgb("b16286")
 #let attribute-color = rgb("98971a")
 #let class-color = rgb("458588")
 #let keyword-color = rgb("d79921")
-
-// #let comment-color = luma(80)
-// #let association-color = rgb("458588")
-// #let attribute-color = rgb("98971a")
-// #let class-color = black
-// #let keyword-color = rgb("d79921")
-
-// #let comment-color = luma(80)
-// #let association-color = luma(150)
-// #let attribute-color = black
-// #let class-color = black
-// #let keyword-color = black
-
 #let keyword-weight = 600
 
 #let to-string(it) = {
@@ -39,9 +25,7 @@
 
 #let indent-block(body) = box(inset: (x: indent-width), body)
 
-#let regular(body) = text(weight: "regular", body)
-
-#let world-keywords = (
+#let real-world-assumption-keywords = (
     "true",
     "false",
     "result",
@@ -57,16 +41,14 @@
 
 #let logic(body) = {
     show sym.space.nobreak: hide(`	`)
-    show emph: set text(
-        // font: "Latin Modern Mono",
-        font: "LMMonoLt10",
-        association-color,
-        weight: keyword-weight,
-    )
 
+    show emph: set text(association-color, weight: keyword-weight)
+    show regex("  "): it => h(indent-width)
     show regex("[\w_]+\("): set text(attribute-color, weight: keyword-weight)
     show regex("\("): set text(black, weight: 300)
-    show regex("\b(" + world-keywords.join("|") + ")\b"): set text(
+    show regex(
+        "\b(" + real-world-assumption-keywords.join("|") + ")\b",
+    ): set text(
         keyword-color,
         weight: keyword-weight,
     )
@@ -75,75 +57,41 @@
         mode: "math",
     )
     show regex(logic-symbols.join("|")): re => eval(re.text, mode: "math")
-
     show regex("not"): $not #h(-.25em)$
-
     show regex("\$(.*?)\$"): re => eval(re.text, mode: "markup")
-    show regex("[A-Z]\w+"): set text(
-        class-color,
-        // font: "Latin Modern Mono Caps",
-        // font: "LMMonoCaps10",
-        font: "LMMonoLt10",
-        style: "normal",
-        weight: keyword-weight,
-    )
     show regex("\*(\S*)\*"): re => {
         show "*": ""
         emph(re.text)
     }
+    show regex("[A-Z]\w+"): set text(
+        class-color,
+        style: "normal",
+        weight: keyword-weight,
+    )
 
-    // set text(font: "Latin Modern Mono", lang: "it")
-    // show raw: set text(font: "Latin Modern Mono", lang: "it")
-    set text(font: "LMMonoLt10", lang: "it")
-    show raw: set text(font: "LMMonoLt10", lang: "it")
+    set text(font: "Latin Modern Mono 12", size: 11pt, lang: "it")
+    show raw: set text(font: "Latin Modern Mono 12", size: 11pt, lang: "it")
 
     body
 }
-
-// show raw: set text(font: "CaskaydiaCove NFM", lang: "it", weight: "light", size: 9pt)
-// set text(font: "CaskaydiaCove NFM", lang: "it", weight: "light", size: 9pt)
-// strong(text(font: "New Computer Modern", size: 11pt, title))
 
 #let sub-par(
     title,
     body,
 ) = {
-    // text(font: "Latin Modern Mono Caps", title)
-    text(font: "LMMonoCaps10", title)
+    logic(title)
     linebreak()
     indent-block(logic(body))
 }
-
-// underline(offset: 1.5pt, stroke: .1pt, title)
 
 #let constraint(
     name,
     body,
 ) = {
-    // box(
-    //     stroke: (bottom: .25pt),
-    //     inset: (bottom: .5em),
-    //     width: 100%,
-    highlight(logic(text(font: "LMMonoLt10", [[#name]])))
-    // logic(text(font: "Latin Modern Mono", name)),
-    // )
-
+    highlight(logic(text([[#name]])))
     v(-.5em)
-
-    // par(indent-block(logic(body)))
     par(indent-block(logic(body)))
 }
-
-// highlight(extent: .5em)[
-// line(stroke: .1pt, length: 100%)
-// line(stroke: .1pt, length: 100%)
-// ]
-//   #figure(kind: "constraint", supplement: to-string(name),
-// )
-// font: "New Computer Modern Math",
-// set text(font: "Latin Modern Mono Caps", lang: "it")
-// #label(to-string(name))
-// #label("constraint")
 
 #let operation(
     name,
@@ -152,15 +100,7 @@
     prec: none,
     post: none,
 ) = {
-    // box(
-    //     stroke: (y: .25pt),
-    //     inset: (y: .5em),
-    //     width: 100%,
-    // logic[#text(font: "Latin Modern Mono")[#name\(#args)#if (
-    highlight(logic[#text(font: "LMMonoLt10")[#name\(#args)#if (
-            type != none
-        ) [: #type]]])
-    // )
+    highlight(logic[#name\(#args)#if (type != none) [: #type]])
 
     if prec != none {
         v(-.5em)
@@ -172,15 +112,6 @@
         par(indent-block(sub-par([postconditions:], post)))
     }
 }
-
-// highlight(extent: .5em)[
-// #figure(
-//     kind: "operation",
-//     supplement: to-string(name),
-// )
-// ]
-// label(to-string(name))
-// label("operation")
 
 
 #let extension(
@@ -196,6 +127,8 @@
                 v(2pt)
                 body
             }
+
+            let regular(body) = text(weight: "regular", body)
 
             if new-objects != none {
                 if body != none { v(-.5em) }
@@ -216,6 +149,60 @@
         },
     )
 }
+
+
+// set text(font: text-font, lang: "it")
+// font: "Latin Modern Mono",
+// font: "Latin Modern Mono Caps",
+// font: "LMMonoCaps10",
+// font: "LMMonoLt10",
+// set text(font: "LMMonoLt10", lang: "it")
+// show raw: set text(font: "LMMonoLt10", lang: "it")
+// show raw: set text(font: "CaskaydiaCove NFM", lang: "it", weight: "light", size: 9pt)
+// set text(font: "CaskaydiaCove NFM", lang: "it", weight: "light", size: 9pt)
+// strong(text(font: "New Computer Modern", size: 11pt, title))
+
+// text(font: "Latin Modern Mono Caps", title)
+// text(font: "LMMonoCaps10", title)
+
+// underline(offset: 1.5pt, stroke: .1pt, title)
+
+// box(
+//     stroke: (bottom: .25pt),
+//     inset: (bottom: .5em),
+//     width: 100%,
+// highlight(logic(text(font: "LMMonoLt10", [[#name]])))
+// logic(text(font: "Latin Modern Mono", name)),
+// )
+// par(indent-block(logic(body)))
+
+// highlight(extent: .5em)[
+// line(stroke: .1pt, length: 100%)
+// line(stroke: .1pt, length: 100%)
+// ]
+//   #figure(kind: "constraint", supplement: to-string(name),
+// )
+// font: "New Computer Modern Math",
+// set text(font: "Latin Modern Mono Caps", lang: "it")
+// #label(to-string(name))
+// #label("constraint")
+
+// box(
+//     stroke: (y: .25pt),
+//     inset: (y: .5em),
+//     width: 100%,
+// logic[#text(font: "Latin Modern Mono")[#name\(#args)#if (
+// )
+
+// highlight(extent: .5em)[
+// #figure(
+//     kind: "operation",
+//     supplement: to-string(name),
+// )
+// ]
+// label(to-string(name))
+// label("operation")
+
 
 // v(-.5em)
 // v(-.5em)
@@ -248,3 +235,24 @@
 //     #v(10pt)
 //     // ]
 // ]
+// #let indent-width = 1.2em
+// #let text-font = "CaskaydiaCove NF"
+// #let wrap-text(body) = text(
+//     font: "CaskaydiaCove NF",
+//     size: 11pt,
+//     lang: "it",
+//     body,
+// )
+
+// #let comment-color = luma(80)
+// #let association-color = rgb("458588")
+// #let attribute-color = rgb("98971a")
+// #let class-color = black
+// #let keyword-color = rgb("d79921")
+
+// #let comment-color = luma(80)
+// #let association-color = luma(150)
+// #let attribute-color = black
+// #let class-color = black
+// #let keyword-color = black
+

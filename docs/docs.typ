@@ -7,22 +7,38 @@
     it.body
 }
 
+#let definition(name, body) = {
+    [
+        #heading(outlined: false, numbering: none, level: 4, {
+            [Definition]
+            context counter("definition").step()
+            math.space
+            context counter("definition").display()
+            [ (]
+            text(style: "italic", name)
+            [)]
+        }) #label(name.replace(" ", "-"))
+    ]
+
+    body
+}
+
 #show heading: set block(above: 1.4em, below: 1em)
 #show outline.entry.where(level: 1): set text(weight: "bold")
 #show outline.entry.where(level: 1): set outline.entry(fill: none)
 #show link: it => underline(offset: 2pt, it)
-#show math.equation: set text(
-    font: "New Computer Modern Math",
-    lang: "en",
-    weight: "light",
-    size: 10pt,
-)
-#show raw: set text(
-    font: "New Computer Modern Math",
-    lang: "en",
-    weight: "light",
-    size: 10pt,
-)
+// #show math.equation: set text(
+//     font: "New Computer Modern Math",
+//     lang: "en",
+//     weight: "light",
+//     size: 10pt,
+// )
+// #show raw: set text(
+//     font: "New Computer Modern Math",
+//     lang: "en",
+//     weight: "light",
+//     size: 10pt,
+// )
 
 #set text(font: "New Computer Modern", lang: "en", weight: "light", 11pt)
 #set page(margin: 1.5in)
@@ -71,7 +87,7 @@ described scenario.
     the fixed point, ensemble of SAs etc...)
 ]
 
-#TODO[add case study, multiple if possible]
+#TODO[case studies]
 
 #pagebreak()
 
@@ -81,8 +97,8 @@ The basic idea behind the software is to take the description of a scenario
 (with _target species_, _target pathways_, constraints on the _target species_,
 and the parameters $epsilon, delta in (0, 1)$ for the evalation of the
 constraints), to generate a SBML model with
-- all the reactions within the _target pathways_ that, both directly and
-    indirectly, generate the _target species_
+- the reactions within the _target pathways_ that, both directly and indirectly,
+    generate the _target species_
 - parameters for the reactions' speeds
 - structural constraints on the reactions' speeds (some reactions are faster
     than others) #TODO[I still haven't figured out how to get that information
@@ -90,26 +106,6 @@ constraints), to generate a SBML model with
 - constraints on the quantities of the entities (for which the model needs to be
     simulated)
 
-#TODO[
-    possibly take a configuration file as input, maybe PEtab could be good,
-    otherwise `JSON` should be enough, as everything else is generated
-    automatically from Reactome, the model should work with both StableIDVersion
-    and ReactomeDbId;
-
-    The #logic[TargetPathway]s should be optional. The ExtraConstraints should
-    be optional. The PreferredCompartmentForSimulation could be specified.
-]
-
-
-// Fixed point
-//
-
-// The algorithm
-//
-// #TODO[better notation here, write something decent to introduce the algorithm]
-
-
-TODO: helper functions are described at page 15
 #box(
     stroke: (y: .25pt),
     inset: (y: .5em),
@@ -117,35 +113,42 @@ TODO: helper functions are described at page 15
     [ *Algorithm 1*: eval],
 )
 #box(stroke: (bottom: .25pt), inset: (bottom: 1em))[
-    #indent-block(logic[
-        *input*: $S_T$, set of PhysicalEntity; \
+    #indent-block[
+        *input*: $S_T$, set of #logic[PhysicalEntity]\; \
+        *input*: $P_T$, set of target #logic[Pathway]\; \
         *input*: $C_T$, set of constraints on $S_T$; \
-        *input*: $P_I$, set of target pathways; \
         *input*: $epsilon, delta in (0, 1)$; \
         *input*: seed, random seed; \
 
-        $"model_description" <-$ describe_model($S_T$, $P_I$) \
-        model $<-$ generate_model(model_description) \
-        // $S$ $union$ constraints($S$) $union$ $C$ \
-        env $<-$ define env for model \
+        #logic[
+            scenario $<-$ biological_scenario_definition($S_T$, $P_T$, $C_T$)] \
+        #logic[(sbml_model, vp_definition, env) $<-$ yield_sbml_model(scenario)]
+        \
+
         $V$ = $emptyset$ #logic(text(comment-color)[\/\/ set of virtual
             patients]) \
-
-        // instantiate
-        // generate
-        // biological
-        // model
-        // instance
         *while* $not$ halt requested *do* \
-        ~ $v$ $<-$ instantiate_biological_model(model) #logic(text(
+        ~ $v$ $<-$ #logic[instantiate(vp_definition)] #logic(text(
             comment-color,
         )[\/\/ virtual patient]) \
-        ~ *if* $not$ $v$ satisfies structural constraints *then* \
-        ~~ *continue*; \
-        ~ *if* APSG($v$, env, seed, $epsilon$, $delta$) *then* \
-        ~~ $V <- V union { v }$; \
-    ])
+        ~ *if* ( \
+        $quad quad$ $v$ satisfies structural constraints $and$ \
+        $quad quad$ #logic[APSG(sbml_model, $v$, env, seed, $epsilon$, $delta$)]
+        \
+        ~ ) *then* \
+        $quad quad$ $V <- V union { v }$; \
+
+        *return* V
+    ]
 ]
+
+// $S$ $union$ constraints($S$) $union$ $C$ \
+// env $<-$ define env for model \
+// instantiate
+// generate
+// biological
+// model
+// instance
 
 // *input*: horizon?
 // EAA()
@@ -172,28 +175,33 @@ TODO: helper functions are described at page 15
 // Then, it should generate a model from these reactions (how do I encode the model?)
 // == Formalities
 
-The idea is to expand a portion of Reactome
+The bulk of the logic is in the #logic[yield_sbml_model()] function.
 
-#TODO[this page is far from complete, you can skip to the next one]
+#pagebreak()
 
-*Definition 1* _(... Model)._ A ... model $G$ is a tuple $(S_T, S, R, E)$ where:
+// The idea is to expand a portion of Reactome
 
-- $S_T$ the set of target species
-- $S$ is the finite set of species s.t.
-    - $S_T subset.eq S$
-    - $S$ is the transitive closure of $S_I$ within the Reactome graph (to be
-        more precise, the closure within the specified bounds, bounds yet to be
-        defined)
-    - $S' = S union {s_"avg" | s in S }$.
-    - $accent(s, dot) = f(s_1, s_2, s_3, ..., s_n)$
-- $R$ is the finite set of reactions
-    - $R = R_"fast" union R_"slow"$
-- $E$ is the set edges in the graph (where and edge goes from a species to a
-    reaction, it also has a stoichiometry) // DONE: check whether the stoichiometry is in $QQ^+$ or in $NN^+$, it's in NN^+
-    - $E subset.eq S times R times NN^1$
-    - $E = E_"reactant" union E_"product" union E_"modifier"$
-    - TODO: account for order (edges also have an "order" attribute, I have to
-        check how it impacts the simulation and if it's optional)
+// #TODO[this page is far from complete, you can skip to the next one]
+
+#definition("SBML model")[
+    A _SBML model_ $G$ is a tuple $(S_T, S, R, E)$ s.t.
+    - $S_T$ the set of target species
+    - $S$ is the finite set of species s.t.
+        - $S_T subset.eq S$
+        - $S$ is the transitive closure of $S_I$ within the Reactome graph (to
+            be more precise, the closure within the specified bounds, bounds yet
+            to be defined)
+        - $S' = S union {s_"avg" | s in S }$.
+        - $accent(s, dot) = f(s_1, s_2, s_3, ..., s_n)$
+    - $R$ is the finite set of reactions
+        - $R = R_"fast" union R_"slow"$
+    - $E$ is the set edges in the graph (where and edge goes from a species to a
+        reaction, it also has a stoichiometry)
+        - $E subset.eq S times R times NN^1$
+        - $E = E_"reactant" union E_"product" union E_"modifier"$
+    // - TODO: account for order (edges also have an "order" attribute, I have
+    //     to check how it impacts the simulation and if it's optional)
+]
 
 Average quantities
 
@@ -291,15 +299,8 @@ Reactome Pathway Browser @reactome-pathway-browser. Instances of
 #logic[ReactomeDbId], but its pattern does not match the definition of
 #logic[SId] used to identify objects in SBML.
 
-In order to generate a correct #logic[SBMLModel] the #logic[ReactomeDbId] must
-be converted into a #logic[SId].
-
-#operation(
-    [ReactomeDbId_into_SId],
-    args: [database_id: ReactomeDbId],
-    type: [SId],
-    post: [. . .],
-)
+In order to generate a correct #logic[SBMLDocument] the #logic[ReactomeDbId]
+must be converted into a #logic[SId].
 
 == StableIdVersion
 
@@ -340,7 +341,7 @@ accept it in the description of the models.
 
 #page(width: auto, height: 841.89pt, margin: 20pt)[
     = _(Reactome)_ UML class diagram
-    #align(center + horizon, image("docs-1.svg", height: 770pt))
+    #align(center + horizon, image("docs-database-object.svg", height: 770pt))
 ]
 
 = Classes specification pt. 1
@@ -405,17 +406,17 @@ is to just pick any of them. For this reason the
 // - if no compartment is present just use a default one
 // - if multiple compartments are present use whichever you want (for now)
 
-== DatabaseObjectWithStableId
-
-#constraint(
-    [C.DatabaseObjectWithStableId.either_database_id_or_id_is_defined],
-    ```
-    forall object
-        DatabaseObjectWithStableId(object) ->
-            exists id
-                database_id(object, id) or id(object, id)
-    ```,
-)
+// == DatabaseObjectWithStableId
+//
+// #constraint(
+//     [C.DatabaseObjectWithStableId.either_database_id_or_id_is_defined],
+//     ```
+//     forall object
+//         DatabaseObjectWithStableId(object) ->
+//             exists id
+//                 database_id(object, id) or id(object, id)
+//     ```,
+// )
 
 == Pathway
 
@@ -426,10 +427,7 @@ extract a subset of reactions by specifying the _target pathways_ in a model and
 taking into consideration only the reactions which are included, both directly
 or indirectly, in that pathway (see the #logic[included_reactions()] operation).
 
-Ignoring the #logic[_inferred_to_ association] there are about 34 top level
-pathways.
-
-#TODO[handle #logic[_inferred_to_]]
+There are about 34 top level pathways.
 
 #operation(
     [included_reactions],
@@ -449,16 +447,15 @@ pathways.
     ```,
 )
 
-// exists events
-//     events = { event | *pathway_has_event*(this, reaction) } ->
 
 #pagebreak()
 
 == PhysicalEntity
 
-#TODO[how should I handle complexes here?]
+// #TODO[how should I handle complexes here?]
 
-The reactions which directly have #logic[this] as a product.
+The set of reactions which produce #logic[this] is needed to determine the
+transitive closure of the _target entities_.
 
 #operation(
     [directly_produced_by],
@@ -469,10 +466,6 @@ The reactions which directly have #logic[this] as a product.
     }
     ```,
 )
-// not exists pathway
-//     IgnoredPathway(pathway) and reactions(pathway, reaction)
-
-// #pagebreak()
 
 The set of instances of #logic[DatabaseObject] which are directly or indirectly
 involved in the production of #logic[this].
@@ -490,7 +483,10 @@ involved in the production of #logic[this].
                 *input*(reaction, reaction_input) or
                 (exists catalyst_activity
                     CatalystActivity(catalyst_activity) and
-                    *catalyzed_event*(catalyst_activity, reaction) and
+                    *catalyzed_event*(
+                        catalyst_activity,
+                        reaction
+                    ) and
                     *catalyst_activity_entity*(
                         catalyst_activity,
                         reaction_input
@@ -503,49 +499,46 @@ involved in the production of #logic[this].
     ```,
 )
 
-#TODO[handle active units too]
+// #TODO[handle active units too]
 
 #page(width: auto, height: 841.89pt, margin: 20pt)[
-    = _(Simulation)_ UML class diagram
-    #align(center + horizon, image("docs-2.svg", height: 770pt))
+    = _(Biological scenario definition)_ UML class diagram
+    // #align(center + horizon, image("docs-2.svg", height: 770pt))
+    #align(center + horizon, image(
+        "docs-biological-scenario-definition.svg",
+        height: 770pt,
+    ))
 ]
 
 
 = Classes specification pt. 2
 
-== CompartmentDefinition
+// == CompartmentDefinition
+//
+// #constraint(
+//     [C.CompartmentDefinition.entities_have_compartment_listed],
+//     ```
+//     forall compartment_definition, compartment, species, physical_entity
+//         (
+//             CompartmentDefinition(compartment_instance) and
+//             Compartment(compartment) and
+//             SpeciesDefinition(species) and
+//             PhysicalEntity(physical_entity) and
+//             *compartment_definition*(compartment, compartment_instance) and
+//             *compartment_species*(compartment_definition, species) and
+//             *physical_entity_species*(physical_entity, species)
+//         ) ->
+//             *compartment_entity*(compartment, physical_entity)
+//     ```,
+// )
+//
+// #TODO[what happens if it a PhysicalEntity has some compartments?]
 
-#constraint(
-    [C.CompartmentDefinition.entities_have_compartment_listed],
-    ```
-    forall compartment_Definition, compartment, species, physical_entity
-        (
-            CompartmentDefinition(compartment_instance) and
-            Compartment(compartment) and
-            SpeciesDefinition(species) and
-            PhysicalEntity(physical_entity) and
-            *compartment_Definition*(compartment, compartment_instance) and
-            *compartment_species*(compartment_Definition, species) and
-            *physical_entity_species*(physical_entity, species)
-        ) ->
-            *compartment_entity*(compartment, physical_entity)
-    ```,
-)
+== BiologicalScenarioDefinition
 
-#TODO[what happens if it a PhysicalEntity has some compartments?]
-
-== ModelDescription
-
-#TODO[add possibility to specify KineticLaw for each reaction, or a subset of
-    reactions
-]
-
-// args: [$S_I$: PhysicalEntity [1..\*]],
-// args: [$S_I$: PhysicalEntity [1..\*]],
-// prec: ```
-// ```,
-// exists $S_I$,
-//     $S_I$ = { entity | *initial_entity_model*(this, entity) } ->
+The following operation finds the transitive closure of the _target entities_
+specified in the scenario, by including only reactions within the _target
+    pathways_ if necessary.
 
 #operation(
     [model_objects],
@@ -554,10 +547,10 @@ involved in the production of #logic[this].
     result = { object | exists entity
         PhysicalEntity(entity) and
         DatabaseObject(object) and
-        *model_target_entity*(this, entity) and
+        *target_physical_entity*(this, entity) and
         produced_by(entity, object) and
         (
-            not RestrictedModel(this) or
+            not RestrictedDefinition(this) or
             exists pathway, reaction
                 Pathway(pathway) and
                 ReactionLikeEvent(reaction) and
@@ -571,31 +564,6 @@ involved in the production of #logic[this].
     }
     ```,
 )
-
-// #pagebreak()
-
-// #constraint(
-//     [C.Model.objects_have_corresponding_definitions],
-//     ```
-//     forall model, object
-//         (
-//             Model(model) and
-//             DatabaseObject(object) and
-//             model_objects(model, object)
-//         ) ->
-//             exists definition
-//                 Definition(definition) and
-//                 *definition_model*(definition, model) and
-//                 *database_object_definition*(object, definition)
-//     ```,
-// )
-
-// == ModelInstance
-// #constraint(
-//     [C.ModelInstance.every_reaction_has_a_parameter],
-//     ```
-//     ```,
-// )
 
 #pagebreak()
 
@@ -632,13 +600,6 @@ involved in the production of #logic[this].
     ```,
 )
 
-// #constraint(
-//     [C.ModelInstance.reaction_parameters_are_structurally_valid],
-//     [],
-//     // [. . .],
-// )
-
-
 == SimulatedModelInstance
 
 #operation(
@@ -666,11 +627,6 @@ involved in the production of #logic[this].
     ```,
 )
 
-// == ReactionParameter??
-//
-// - it must satisfy structural constraints
-
-
 == UnitDefinition
 
 #ref(<sbml>, supplement: [page 45])
@@ -683,16 +639,18 @@ involved in the production of #logic[this].
 
 \
 
-#align(center, image("docs-3.svg"))
+#align(center, image("docs-use-case.svg"))
 
 \
+
+#pagebreak()
 
 == "Helper" use-case
 
 #operation(
     [yield_sbml_model],
-    args: [description: ModelDescription],
-    type: [Model],
+    args: [description: BiologicalScenarioDefinition],
+    type: [(SBMLDocument, )],
     post: [
         TODO:
         - create necessary units (TODO: which? how?)
@@ -719,7 +677,7 @@ involved in the production of #logic[this].
 
 #operation(
     [instantiate_model],
-    args: [model: Model],
+    args: [model: SBMLDocument],
     type: [ModelInstance],
     post: [
         TODO:
@@ -740,27 +698,92 @@ involved in the production of #logic[this].
     ],
 )
 
-
-== "Study" use-case
-
-#operation(
-    [describe_model],
-    args: [\
-        ~ target_entities: PhysicalEntity [1..\*] \
-        ~ target_pathways: Pathway [0..\*] \
-    ],
-    type: [ModelDescription],
-    prec: ```
-    target species are within the target pathways
-    ```,
-    post: [return a model description],
-)
-
-#operation(
-    [evaluate],
-    args: [model: Model],
-    type: [VirtualPatient [0..\*]],
-    post: [run algorithm at page 4],
-)
-
 #page(bibliography("bibliography.bib"))
+
+
+
+// == "Study" use-case
+//
+// #operation(
+//     [describe_model],
+//     args: [\
+//         ~ target_entities: PhysicalEntity [1..\*] \
+//         ~ target_pathways: Pathway [0..\*] \
+//     ],
+//     type: [ModelDescription],
+//     prec: ```
+//     target species are within the target pathways
+//     ```,
+//     post: [return a model description],
+// )
+// #operation(
+//     [evaluate],
+//     args: [model: Model],
+//     type: [VirtualPatient [0..\*]],
+//     post: [run algorithm at page 4],
+// )
+
+// #TODO[
+//     possibly take a configuration file as input, maybe PEtab could be good,
+//     otherwise `JSON` should be enough, as everything else is generated
+//     automatically from Reactome, the model should work with both StableIDVersion
+//     and ReactomeDbId;
+//
+//     The #logic[TargetPathway]s should be optional. The ExtraConstraints should
+//     be optional. The PreferredCompartmentForSimulation could be specified.
+// ]
+//
+
+// Fixed point
+//
+
+// The algorithm
+//
+// #TODO[better notation here, write something decent to introduce the algorithm]
+
+// TODO: helper functions are described at page 15
+
+// Ignoring the #logic[_inferred_to_ association] there are about 34 top level
+// pathways.
+// exists events
+//     events = { event | *pathway_has_event*(this, reaction) } ->
+// #TODO[handle #logic[_inferred_to_]]
+
+// #pagebreak()
+
+// #constraint(
+//     [C.Model.objects_have_corresponding_definitions],
+//     ```
+//     forall model, object
+//         (
+//             Model(model) and
+//             DatabaseObject(object) and
+//             model_objects(model, object)
+//         ) ->
+//             exists definition
+//                 Definition(definition) and
+//                 *definition_model*(definition, model) and
+//                 *database_object_definition*(object, definition)
+//     ```,
+// )
+
+// == ModelInstance
+// #constraint(
+//     [C.ModelInstance.every_reaction_has_a_parameter],
+//     ```
+//     ```,
+// )
+
+
+// #constraint(
+//     [C.ModelInstance.reaction_parameters_are_structurally_valid],
+//     [],
+//     // [. . .],
+// )
+
+
+// == ReactionParameter??
+//
+// - it must satisfy structural constraints
+
+

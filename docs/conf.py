@@ -12,7 +12,7 @@ import sys
 # Add path to module
 sys.path.insert(0, os.path.abspath("../"))
 
-project = "bsys"
+project = "BSys"
 copyright = "2025, Ionuț Cicio"
 author = "Ionuț Cicio"
 release = "0.1.0"

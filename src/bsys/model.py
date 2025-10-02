@@ -387,6 +387,8 @@ class BiologicalScenarioDefinition:
             """,
         )
 
+        # TODO: relOfInterest
+
         _ = driver.execute_query(
             """
             MATCH (physicalEntity:PhysicalEntity)<-[:output]-(reactionLikeEvent:ReactionLikeEvent)
@@ -421,6 +423,7 @@ class BiologicalScenarioDefinition:
                 """,
                 target_pathways=list(map(int, self.target_pathways)),
             )
+            # TODO: ReactionOfInterest
         else:
             _ = driver.execute_query(
                 """

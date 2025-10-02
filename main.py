@@ -1,5 +1,9 @@
 """Guacamole."""
 
+# TODO: https://www.proteomicsdb.org/
+# TODO: specie senza input, gene
+# TODO: più aumenta la distanza più la velocità
+
 from pathlib import Path
 
 import libsbml
@@ -118,3 +122,82 @@ if __name__ == "__main__":
 
 # TODO: parallelize on cluster
 # TODO: docs
+
+# MATCH (n {dbId: 202124})
+# CALL
+#     apoc.path.subgraphNodes(
+#         n,
+#         {
+#             relationshipFilter: ">input|<output|catalystActiviy>|physicalEntity>",
+#             labelFilter: ">ReactionLikeEvent",
+#             maxLevel: 3,
+#         }
+#     )
+# YIELD node
+# RETURN node
+
+# MATCH (targetPathway:Pathway)
+# WHERE targetPathway.dbId IN $target_pathways
+# CALL
+#     apoc.path.subgraphNodes(
+#         targetPathway,
+#         {
+#             relationshipFilter: "hasEvent>",
+#             labelFilter: ">ReactionLikeEvent",
+#             bfs: true
+#         }
+#     )
+# YIELD node
+# WITH COLLECT(node) AS speciesOfInterest
+# MATCH (n {dbId: 202124})
+# CALL
+#     apoc.path.subgraphNodes(
+#         n,
+#         {
+#             relationshipFilter: ">input|<output|catalystActiviy>|physicalEntity>",
+#             labelFilter: ">ReactionLikeEvent",
+#             maxLevel: 3
+#         }
+#     )
+# YIELD node
+# WHERE node in speciesOfInterest
+# RETURN node
+
+# WHERE reactionLikeEvent.speciesName = 'Homo sapiens'
+# SET reactionLikeEvent:TargetReactionLikeEvent
+
+
+# MATCH (physicalEntity:PhysicalEntity)<-[:input]-(reactionLikeEvent:ReactionLikeEvent)
+# MERGE (reactionLikeEvent)<-[:fixedPoint]-(physicalEntity);
+# MATCH (physicalEntity:PhysicalEntity)<-[:output]-(reactionLikeEvent:ReactionLikeEvent)
+# MERGE (physicalEntity)<-[:fixedPoint]-(reactionLikeEvent);
+# MATCH (reactionLikeEvent:ReactionLikeEvent)-->(:CatalystActivity)-[:physicalEntity]->(physicalEntity:PhysicalEntity)
+# MERGE (reactionLikeEvent)<-[:fixedPoint]-(physicalEntity);
+# MATCH (targetPathway:Pathway)
+# WHERE targetPathway.dbId IN [162582, 168256]
+# CALL
+#     apoc.path.subgraphNodes(
+#         targetPathway,
+#         {
+#             relationshipFilter: "hasEvent>",
+#             labelFilter: ">ReactionLikeEvent",
+#             bfs: true
+#         }
+#     )
+# YIELD node AS reactionLikeEvent
+# WHERE reactionLikeEvent.speciesName = 'Homo sapiens'
+# SET reactionLikeEvent:TargetReactionLikeEvent;
+# MATCH (targetEntity)
+# WHERE targetEntity.dbId IN [202124]
+# CALL
+#     apoc.path.subgraphNodes(
+#         targetEntity,
+#         {
+#             relationshipFilter: "<fixedPoint",
+#             labelFilter: ">TargetReactionLikeEvent",
+#             bfs: true,
+#             maxLevel: 3
+#         }
+#     )
+# YIELD node
+# RETURN COUNT(node);

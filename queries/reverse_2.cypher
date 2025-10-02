@@ -70,11 +70,7 @@ WHERE targetPathway.dbId IN [162582]
 CALL
   apoc.path.subgraphNodes(
     targetPathway,
-    {
-      relationshipFilter: "hasEvent>",
-      labelFilter: ">ReactionLikeEvent",
-      bfs: true
-    }
+    {relationshipFilter: "hasEvent>", labelFilter: ">ReactionLikeEvent"}
   )
   YIELD node
 WITH COLLECT(node) AS reactionsOfInterest

@@ -29,8 +29,8 @@ def query_transitive_closure(
                 targetPathway,
                 {relationshipFilter: "hasEvent>", labelFilter: ">ReactionLikeEvent"}
             )
-            YIELD node AS reactionOfInterest
-        WITH *, COLLECT(DISTINCT reactionOfInterest) AS reactionsOfInterest
+            YIELD node
+        WITH COLLECT(DISTINCT node) AS reactionsOfInterest
         MATCH (targetEntity)
         WHERE ID(targetEntity) IN $target_physical_entities
         CALL

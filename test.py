@@ -1,8 +1,3 @@
-"""bsys-eval.
-
-Tool to determine the plausability of biological systems states through virtual witnesses.
-"""
-
 from typing import LiteralString
 
 import neo4j

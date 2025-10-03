@@ -65,6 +65,8 @@ RETURN COUNT(DISTINCT node)
 // WHERE n.name = "POTATO"
 // RETURN n
 
+// TODO: pytest
+
 MATCH (targetPathway:Pathway)
 WHERE targetPathway.dbId IN [162582]
 CALL

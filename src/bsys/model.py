@@ -1,5 +1,7 @@
 """"""
 
+# pyright: reportAny = false
+
 import math
 import random
 import re
@@ -8,7 +10,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from functools import cache, reduce
 from operator import attrgetter
-from typing import override
+from typing import LiteralString, Self, override
 
 import libsbml
 import neo4j
@@ -46,23 +48,6 @@ class Interval:
         )
 
 
-@dataclass(frozen=True, eq=False, repr=False)
-class Natural:
-    """Natural number n such that n >= 0."""
-
-    value: int
-
-    def __post_init__(self) -> None:
-        assert self.value >= 0
-
-    def __int__(self) -> int:
-        return self.value
-
-    @override
-    def __repr__(self) -> str:
-        return self.value.__repr__()
-
-
 @dataclass
 class BiologicalNumber:
     id: int
@@ -73,11 +58,20 @@ class BiologicalNumber:
     keywords: set[str]
 
 
-class NonZeroNatural(Natural):
-    """Natural number n such that n > 0."""
+class Natural(int):
+    """Number n such that n >= 0."""
 
-    def __post_init__(self) -> None:
-        assert self.value > 0
+    def __new__(cls, value: int) -> Self:
+        assert value >= 0
+        return super().__new__(cls, value)
+
+
+class NonZeroNatural(int):
+    """Number n such that n > 0."""
+
+    def __new__(cls, value: int) -> Self:
+        assert value > 0
+        return super().__new__(cls, value)
 
 
 class ReactomeDbId(Natural):
@@ -88,25 +82,15 @@ class ReactomeDbId(Natural):
     """
 
     @staticmethod
-    def from_stable_id_version(full_id: StableIdVersion) -> "ReactomeDbId":
+    def from_stable_id_version(st_id: StableIdVersion) -> "ReactomeDbId":
         """Convert from a StableIdVersion to a basic ReactomeDbId.
 
         In the "Reactome Pathway Browser" objects are identified with their full
         StableIdVersion, from which the corresponding ReactomeDbId can be extracted
         """
-        match = re.search("R-[A-Z]{3}-([0-9]{1,8})[.][0-9]{1,3}$", full_id)
+        match = re.search("R-[A-Z]{3}-([0-9]{1,8})([.][0-9]{1,3})?$", st_id)
         assert match
         return ReactomeDbId(int(match.group()))
-
-    @override
-    def __hash__(self) -> int:
-        return self.value.__hash__()
-
-    @override
-    def __eq__(self, value: object, /) -> bool:
-        return isinstance(value, ReactomeDbId) and self.value.__eq__(
-            value.value
-        )
 
 
 class Stoichiometry(NonZeroNatural):
@@ -128,7 +112,8 @@ class DatabaseObject:
         return isinstance(value, DatabaseObject) and self.id.__eq__(value.id)
 
     def __int__(self) -> int:
-        return self.id.value
+        # return self.id.value
+        return self.id
 
     @override
     def __repr__(self) -> str:
@@ -370,86 +355,29 @@ class BiologicalScenarioDefinition:
         assert len(self.target_physical_entities) > 0
         assert not self.target_pathways or len(self.target_pathways) > 0
 
-    @staticmethod
-    def from_sbml(sbml: libsbml.SBMLDocument) -> "BiologicalScenarioDefinition":
-        # model: libsbml.Model = sbml.getModel()
-        # model.getSpecies()
-        return BiologicalScenarioDefinition(set(), None, [])
-
     def __model_objects(
         self,
         driver: neo4j.Driver,
     ) -> set[PhysicalEntity | ReactionLikeEvent | Compartment]:
-        _ = driver.execute_query(
-            """
-            MATCH (physicalEntity:PhysicalEntity)<-[:input]-(reactionLikeEvent:ReactionLikeEvent)
-            MERGE (reactionLikeEvent)<-[:fixedPoint]-(physicalEntity);
-            """,
-        )
-
-        # TODO: relOfInterest
-
-        _ = driver.execute_query(
-            """
-            MATCH (physicalEntity:PhysicalEntity)<-[:output]-(reactionLikeEvent:ReactionLikeEvent)
-            MERGE (physicalEntity)<-[:fixedPoint]-(reactionLikeEvent);
-            """,
-        )
-
-        _ = driver.execute_query(
-            """
-            MATCH (reactionLikeEvent:ReactionLikeEvent)-->(:CatalystActivity)-[:physicalEntity]->(physicalEntity:PhysicalEntity)
-            MERGE (reactionLikeEvent)<-[:fixedPoint]-(physicalEntity);
-            """,
-        )
-
-        if self.target_pathways:
-            _ = driver.execute_query(
-                """
-                MATCH (targetPathway:Pathway)
-                WHERE targetPathway.dbId IN $target_pathways
-                CALL
-                    apoc.path.subgraphNodes(
-                        targetPathway,
-                        {
-                            relationshipFilter: "hasEvent>",
-                            labelFilter: ">ReactionLikeEvent",
-                            bfs: true
-                        }
-                    )
-                YIELD node AS reactionLikeEvent
-                WHERE reactionLikeEvent.speciesName = 'Homo sapiens'
-                SET reactionLikeEvent:TargetReactionLikeEvent
-                """,
-                target_pathways=list(map(int, self.target_pathways)),
+        compute_reaction_like_events_in_transitive_closure = """
+        MATCH (targetPhysicalEntity:PhysicalEntity)
+        WHERE targetPhysicalEntity.dbId IN $target_physical_entities
+        CALL
+            apoc.path.subgraphNodes(
+                targetPhysicalEntity,
+                {
+                    relationshipFilter: "<output|input>|catalystActivity>|physicalEntity>",
+                    labelFilter: ">ReactionLikeEvent",
+                    maxLevel: $max_level
+                }
             )
-            # TODO: ReactionOfInterest
-        else:
-            _ = driver.execute_query(
-                """
-                MATCH (reactionLikeEvent:ReactionLikeEvent)
-                SET reactionLikeEvent:TargetReactionLikeEvent;
-                """,
-            )
+            YIELD node
+        """
 
-        records, _, _ = driver.execute_query(
-            """
-            MATCH (targetEntity)
-            WHERE targetEntity.dbId IN $target_entities
-            CALL
-                apoc.path.subgraphNodes(
-                    targetEntity,
-                    {
-                        relationshipFilter: "<fixedPoint",
-                        labelFilter: ">TargetReactionLikeEvent",
-                        bfs: true,
-                        maxLevel: 3
-                    }
-                )
-            YIELD node AS reactionLikeEvent
+        expand_reaction_like_events = """
             CALL {
-                WITH reactionLikeEvent
-                MATCH (reactionLikeEvent)-[r:input]->(e)
+                WITH node
+                MATCH (node)-[r:input]->(e)
                 CALL {
                     WITH e
                     MATCH (e)-[:compartment]-(compartment:Compartment)
@@ -467,8 +395,8 @@ class BiologicalScenarioDefinition:
                     }) AS reactants
             }
             CALL {
-                WITH reactionLikeEvent
-                MATCH (reactionLikeEvent)-[r:output]->(e)
+                WITH node
+                MATCH (node)-[r:output]->(e)
                 CALL {
                     WITH e
                     MATCH (e)-[:compartment]-(compartment:Compartment)
@@ -486,8 +414,8 @@ class BiologicalScenarioDefinition:
                     }) AS products
             }
             CALL {
-                WITH reactionLikeEvent
-                MATCH (reactionLikeEvent)-->(:CatalystActivity)-[:physicalEntity]->(e)
+                WITH node
+                MATCH (node)-->(:CatalystActivity)-[:physicalEntity]->(e)
                 CALL {
                     WITH e
                     MATCH (e)-[:compartment]-(compartment:Compartment)
@@ -502,87 +430,95 @@ class BiologicalScenarioDefinition:
                 }) AS enzymes
             }
             CALL {
-                WITH reactionLikeEvent
-                MATCH (reactionLikeEvent)-[:compartment]-(compartment:Compartment)
+                WITH node
+                MATCH (node)-[:compartment]-(compartment:Compartment)
                 RETURN COLLECT({
                     id: compartment.dbId,
                     display_name: compartment.displayName
                 }) AS compartments
             }
             CALL {
-                WITH reactionLikeEvent
-                OPTIONAL MATCH (reactionLikeEvent)-[:reverseReaction]->(reverseReactionLikeEvent)
+                WITH node
+                OPTIONAL MATCH (node)-[:reverseReaction]->(reverseReactionLikeEvent)
                 RETURN reverseReactionLikeEvent
             }
             RETURN COLLECT({
-                id: reactionLikeEvent.dbId,
+                id: node.dbId,
                 reactants: reactants,
                 products: products,
                 enzymes: enzymes,
                 compartments: compartments,
                 is_reversible: reverseReactionLikeEvent
             }) AS reactions;
-            """,
-            target_entities=list(map(int, self.target_physical_entities)),
-        )
+        """
 
-        val = records[FIRST][FIRST]
+        records: list[neo4j.Record]
+        target_physical_entities = list(map(int, self.target_physical_entities))
+
+        if self.target_pathways:
+            records, _, _ = driver.execute_query(
+                """
+                MATCH (targetPathway:Pathway)
+                WHERE targetPathway.dbId IN $target_pathways
+                CALL
+                    apoc.path.subgraphNodes(
+                        targetPathway,
+                        {relationshipFilter: "hasEvent>", labelFilter: ">ReactionLikeEvent"}
+                    )
+                    YIELD node
+                WITH COLLECT(DISTINCT node) AS reactionsSubsetOfInterest
+                """
+                + compute_reaction_like_events_in_transitive_closure
+                + "WHERE node IN reactionsSubsetOfInterest"
+                + expand_reaction_like_events,
+                max_level=int(self.max_depth) if self.max_depth else -1,
+                target_pathways=list(map(int, self.target_pathways)),
+                target_physical_entities=target_physical_entities,
+            )
+        else:
+            records, _, _ = driver.execute_query(
+                compute_reaction_like_events_in_transitive_closure
+                + expand_reaction_like_events,
+                max_level=self.max_depth or -1,
+                target_physical_entities=target_physical_entities,
+            )
+
+        val = records[FIRST]["reactions"]
         reaction_like_events: set[ReactionLikeEvent] = {
             ReactionLikeEvent(
                 id=reaction["id"],
                 physical_entities={
                     PhysicalEntityReactionLikeEvent(
                         physical_entity=PhysicalEntity(
-                            ReactomeDbId(entity["id"]),
+                            e["id"],
                             compartments={
-                                Compartment(
-                                    ReactomeDbId(
-                                        compartment["id"],
-                                    ),
-                                    compartment["display_name"],
-                                )
-                                for compartment in entity["compartments"]
+                                Compartment(**c) for c in e["compartments"]
                             },
                         ),
-                        stoichiometry=Stoichiometry(
-                            entity["stoichiometry"],
-                        ),
-                        # order=Natural(entity["order"]),
+                        stoichiometry=e["stoichiometry"],
                         type=PhysicalEntityReactionLikeEvent.Type.INPUT,
                     )
-                    for entity in reaction["products"]
+                    for e in reaction["products"]
                 }
                 | {
                     PhysicalEntityReactionLikeEvent(
-                        physical_entity=PhysicalEntity(
-                            ReactomeDbId(entity["id"]),
-                        ),
-                        stoichiometry=Stoichiometry(
-                            entity["stoichiometry"],
-                        ),
-                        # order=Natural(entity["order"]),
+                        physical_entity=PhysicalEntity(e["id"]),
+                        stoichiometry=Stoichiometry(e["stoichiometry"]),
                         type=PhysicalEntityReactionLikeEvent.Type.OUTPUT,
                     )
-                    for entity in reaction["reactants"]
+                    for e in reaction["reactants"]
                 },
                 enzymes={
                     PhysicalEntity(
                         ReactomeDbId(entity["id"]),
                         compartments={
-                            Compartment(
-                                ReactomeDbId(entity["id"]),
-                                entity["display_name"],
-                            )
-                            for entity in reaction["compartments"]
+                            Compartment(**c) for c in entity["compartments"]
                         },
                     )
                     for entity in reaction["enzymes"]
                 },
                 compartments={
-                    Compartment(
-                        ReactomeDbId(entity["id"]), entity["display_name"]
-                    )
-                    for entity in reaction["compartments"]
+                    Compartment(**c) for c in reaction["compartments"]
                 },
                 is_reversible=bool(reaction["is_reversible"]),
             )

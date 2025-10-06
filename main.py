@@ -14,6 +14,7 @@ from src.bsys.model import (
     BiologicalScenarioDefinition,
     Environment,
     Interval,
+    NonZeroNatural,
     Pathway,
     PhysicalEntity,
     ReactomeDbId,
@@ -44,6 +45,7 @@ def main() -> None:
                 immune_system,
             },
             constraints=[f"{nitric_oxide} > 0.01"],
+            max_depth=NonZeroNatural(3),
         )
     )
 
@@ -64,9 +66,10 @@ def main() -> None:
         )
 
     sbml_str = libsbml.writeSBMLToString(sbml_document)
-    rr: roadrunner.RoadRunner = roadrunner.RoadRunner(sbml_str)
+    # rr: roadrunner.RoadRunner = roadrunner.RoadRunner(sbml_str)
     with Path("test.sbml").open("w") as file:
         _ = file.write(sbml_str)
+    exit(0)
 
     virtual_patients = []
     for _ in range(10):

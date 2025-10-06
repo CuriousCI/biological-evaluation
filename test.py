@@ -31,7 +31,7 @@ def query_transitive_closure(
             )
             YIELD node
         WITH COLLECT(DISTINCT node) AS reactionsOfInterest
-        MATCH (targetEntity)
+        MATCH (targetEntity:PhysicalEntity)
         WHERE ID(targetEntity) IN $target_physical_entities
         CALL
             apoc.path.subgraphNodes(

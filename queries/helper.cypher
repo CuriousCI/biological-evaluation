@@ -113,3 +113,39 @@ LIMIT 3
 // Specific examples of transport event
 MATCH path = (n {dbId: 10023106})-[:input|output]-(p:PhysicalEntity)
 RETURN path
+
+// Count how many relations are there
+MATCH ()-[relation]-()
+RETURN COUNT(DISTINCT relation) // 11207998
+
+// Count how many relations actually have an order / stoichiometry
+MATCH ()-[relation]-()
+WHERE relation.stoichiometry >= 0
+RETURN COUNT(DISTINCT relation) // 11207998
+
+// At least has displayName
+MATCH (n)
+WHERE n.displayName <> ''
+RETURN COUNT(DISTINCT n) // 2884994
+
+// All nodes
+MATCH (n)
+RETURN COUNT(DISTINCT n) // 2886311
+
+// At least have the 'isInDisease' attribute
+MATCH (n)
+WHERE n.isInDisease OR NOT n.isInDisease
+RETURN COUNT(DISTINCT n) // 518301
+
+// Return some kind of catalyst reaction
+MATCH
+  path =
+    (r:ReactionLikeEvent)-[:catalystActivity]->
+    (c:CatalystActivity)-[:physicalEntity]->
+    (p:PhysicalEntity)<-[:hasComponent]-
+    (complex:Complex),
+  path2 = (r)-[:input|output*..4]-(complex)
+RETURN path, path2
+LIMIT 1
+
+// TODO: species can be both catalyst and input and be part of output

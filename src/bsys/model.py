@@ -191,11 +191,18 @@ class PhysicalEntityReactionLikeEvent:
 
 @dataclass(frozen=True, eq=False)
 class ReactionLikeEvent(Event):
+    """Used to organize other concrete reaction types (Reaction, Polymerization and BlackBoxEvent...).
+
+    A molecular process in which one or more input physical entities are transformed in a single step into output physical entities, optionally mediated by a catalyst activity and subject to regulation
+    """
+
     physical_entities: set[PhysicalEntityReactionLikeEvent]
     enzymes: set[PhysicalEntity] = field(default_factory=set)
     compartments: set[Compartment] = field(default_factory=set)
     is_reversible: bool = False
     is_fast: bool = False
+    positive_regulators: set[PhysicalEntity] = field(default_factory=set)
+    negative_regulators: set[PhysicalEntity] = field(default_factory=set)
 
     @cache
     def reactants(self) -> set[PhysicalEntityReactionLikeEvent]:
@@ -243,6 +250,7 @@ class VirtualPatientDetails:
     """A virtual patient is described by the set of parameters."""
 
     # TODO: set()
+    # min max
     parameters: list[libsbml.Parameter]
 
     def __call__(self) -> VirtualPatient:
@@ -309,10 +317,13 @@ class BaseKineticLaw(Enum):
 
                 hill_component: str | None = None
                 if reaction_like_event.enzymes:
-                    # if(sbo == SBO_ACTIVATOR || sbo == SBO_ENZYME || sbo == SBO_STIMULATOR) positive
-                    # elif (sbo == SBO_INHIBITOR) negative
-                    # h = 10
                     hill_component = "1"
+
+                if reaction_like_event.positive_regulators:
+                    pass
+
+                if reaction_like_event.negative_regulators:
+                    pass
 
                 reaction_formula = f"(k_forward_{reaction_like_event} * {'*'.join(map(repr, reaction_like_event.reactants()))})"
 
@@ -345,7 +356,7 @@ class BiologicalScenarioDefinition:
     target_pathways: set[Pathway] | None
     constraints: list[MathMLBool]
     max_depth: NonZeroNatural | None = None
-    excluded_physical_entities: set[PhysicalEntity] = field(default_factory=set)
+    denied_physical_entities: set[PhysicalEntity] = field(default_factory=set)
     default_kinetic_law: KineticLaw = BaseKineticLaw.LAW_OF_MASS_ACTION
     kinetic_laws: dict[ReactionLikeEvent, KineticLaw] = field(
         default_factory=dict,
@@ -366,9 +377,10 @@ class BiologicalScenarioDefinition:
             apoc.path.subgraphNodes(
                 targetPhysicalEntity,
                 {
-                    relationshipFilter: "<output|input>|catalystActivity>|physicalEntity>",
+                    relationshipFilter: "<output|input>|catalystActivity>|physicalEntity>|<regulatedBy|regulator>",
                     labelFilter: ">ReactionLikeEvent",
-                    maxLevel: $max_level
+                    maxLevel: $max_level,
+                    denylistNodes: $excluded_physical_entities
                 }
             )
             YIELD node
@@ -439,6 +451,16 @@ class BiologicalScenarioDefinition:
             }
             CALL {
                 WITH node
+                MATCH (node)-[:regulatedBy]->(:PositiveRegulation)-[:regulator]->(p:PhysicalEntity)
+                RETURN COLLECT({ id: p.dbId }) AS positiveRegulators
+            }
+            CALL {
+                WITH node
+                MATCH (node)-[:regulatedBy]->(:NegativeRegulation)-[:regulator]->(p:PhysicalEntity)
+                RETURN COLLECT({ id: p.dbId }) AS negativeRegulators
+            }
+            CALL {
+                WITH node
                 OPTIONAL MATCH (node)-[:reverseReaction]->(reverseReactionLikeEvent)
                 RETURN reverseReactionLikeEvent
             }
@@ -448,12 +470,17 @@ class BiologicalScenarioDefinition:
                 products: products,
                 enzymes: enzymes,
                 compartments: compartments,
-                is_reversible: reverseReactionLikeEvent
+                is_reversible: reverseReactionLikeEvent,
+                positive_regulators: positiveRegulators,
+                negative_regulators: negativeRegulators
             }) AS reactions;
         """
 
         records: list[neo4j.Record]
         target_physical_entities = list(map(int, self.target_physical_entities))
+        excluded_physical_entities = list(
+            map(int, self.denied_physical_entities),
+        )
 
         if self.target_pathways:
             records, _, _ = driver.execute_query(
@@ -474,6 +501,7 @@ class BiologicalScenarioDefinition:
                 max_level=int(self.max_depth) if self.max_depth else -1,
                 target_pathways=list(map(int, self.target_pathways)),
                 target_physical_entities=target_physical_entities,
+                excluded_physical_entities=excluded_physical_entities,
             )
         else:
             records, _, _ = driver.execute_query(
@@ -520,6 +548,12 @@ class BiologicalScenarioDefinition:
                 compartments={
                     Compartment(**c) for c in reaction["compartments"]
                 },
+                positive_regulators={
+                    PhysicalEntity(**p) for p in reaction["positive_regulators"]
+                },
+                negative_regulators={
+                    PhysicalEntity(**p) for p in reaction["negative_regulators"]
+                },
                 is_reversible=bool(reaction["is_reversible"]),
             )
             for reaction in val
@@ -529,6 +563,8 @@ class BiologicalScenarioDefinition:
             set.union,
             (
                 reaction_like_event.enzymes
+                | reaction_like_event.positive_regulators
+                | reaction_like_event.negative_regulators
                 | set(
                     map(
                         attrgetter("physical_entity"),

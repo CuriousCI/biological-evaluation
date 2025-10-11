@@ -183,25 +183,25 @@ The bulk of the logic is in the #logic[yield_sbml_model()] function.
 
 // #TODO[this page is far from complete, you can skip to the next one]
 
-#definition("SBML model")[
-    A _SBML model_ $G$ is a tuple $(S_T, S, R, E)$ s.t.
-    - $S_T$ the set of target species
-    - $S$ is the finite set of species s.t.
-        - $S_T subset.eq S$
-        - $S$ is the transitive closure of $S_I$ within the Reactome graph (to
-            be more precise, the closure within the specified bounds, bounds yet
-            to be defined)
-        - $S' = S union {s_"avg" | s in S }$.
-        - $accent(s, dot) = f(s_1, s_2, s_3, ..., s_n)$
-    - $R$ is the finite set of reactions
-        - $R = R_"fast" union R_"slow"$
-    - $E$ is the set edges in the graph (where and edge goes from a species to a
-        reaction, it also has a stoichiometry)
-        - $E subset.eq S times R times NN^1$
-        - $E = E_"reactant" union E_"product" union E_"modifier"$
-    // - TODO: account for order (edges also have an "order" attribute, I have
-    //     to check how it impacts the simulation and if it's optional)
-]
+// #definition("SBML model")[
+//     A _SBML model_ $G$ is a tuple $(S_T, S, R, E)$ s.t.
+//     - $S_T$ the set of target species
+//     - $S$ is the finite set of species s.t.
+//         - $S_T subset.eq S$
+//         - $S$ is the transitive closure of $S_I$ within the Reactome graph (to
+//             be more precise, the closure within the specified bounds, bounds yet
+//             to be defined)
+//         - $S' = S union {s_"avg" | s in S }$.
+//         - $accent(s, dot) = f(s_1, s_2, s_3, ..., s_n)$
+//     - $R$ is the finite set of reactions
+//         - $R = R_"fast" union R_"slow"$
+//     - $E$ is the set edges in the graph (where and edge goes from a species to a
+//         reaction, it also has a stoichiometry)
+//         - $E subset.eq S times R times NN^1$
+//         - $E = E_"reactant" union E_"product" union E_"modifier"$
+//     // - TODO: account for order (edges also have an "order" attribute, I have
+//     //     to check how it impacts the simulation and if it's optional)
+// ]
 
 Average quantities
 
@@ -232,6 +232,205 @@ Average quantities
             & exists t_0 space.en forall t space.en forall s \
             & quad (t > t_0 and s in S_"avg") -> s(t) in ["known range"]
         $
+
+#pagebreak()
+
+// chi sono gli oggetti
+// la relazione di "reazione" sugli oggetti
+// la relazione transitiva sugli oggetti (chiusura transitiva)
+
+// #box(stroke: .1pt, inset: 1em)[
+
+- $NN^+ = { n | n in NN and n > 0 }$
+
+#definition("biological graph")[
+    A _biological graph_ $G$ is a tuple $(S, R, E, F)$ s.t.
+    - $S$ is a set of species
+    - $R$ is a set of reactions
+    - $E : S times R -> NN^+$ // is the stoichiometry
+        - $E = E_"reactant" union E_"product" union E_"modifier"$
+    // - $F : E -> NN^+$ is the stoichiometry of the edges
+    // TODO: exclude modifiers
+    // TODO: do we really need NN^+ for modifiers too?
+    // TODO: also modifiers do not have the inverse order, they just act upon...
+]
+
+#definition("\"produces\" relation")[
+    Given a _biological graph_ $G = (S, R, E, F)$ let $~>$ be a relation s.t.
+    - $forall s, r quad (s, r) in "dom"(E_"reactant" union E_"modifier") => s ~> r$
+    - $forall s, r quad (s, r) in "dom"(E_"product") => r ~> s$
+    - $forall c, c', c'' quad (c ~> c' and c' ~> c'') => c ~> c''$
+
+    $~>$ is the _"produces"_ relation
+]
+
+#definition("model??")[
+    Given a set of target species $S_T$, a set of target pathways $P_T$ and a
+    biological graph $G = (S, E, R)$ s.t.
+    - $S_T subset.eq S$
+    A _model_ is a subgraph $G' = (S', E', R')$ s.t.
+    - $G' subset.eq G$
+    - $S' = { s | exists s_t space s in S and s_t in S_T and s scripts(~>)_G s_t}$
+    - $R' = { r | exists s_t space r in R and s_t in S_T and r scripts(~>)_G s_t}$
+    - $E' = ((s, r, n) | (s, r, n) in E and s in S' and r in R')$
+    // TODO: include target pathways somehow
+    // TODO: show that it is a biological graph?
+]
+
+#definition("constraint problem on a biological model")[
+    Given a model $G$ with target species $S_T$ and target pathways $P_T$ let
+    the following be a constraint problem
+
+
+    - $k : R -> RR^(|R|)$ // k is an assignement of the constants of the reaction, where |R| is the number of constants
+
+    *find* $k$
+    *subject to*
+    - partial order on $k$ from the structure of the graph
+    - partial order on the quantities
+    - constraint on enzymes such that
+        $
+            E + S <->^(k_1, k_(-1)) E S ->^(k_2) E + P
+        $
+    $
+        k_1, k_(-1) >> k_2
+    $
+
+    - for all dynamics of the environment
+        - average concentration of species consistent to knowledge
+        $
+            & exists t_0 space.en forall t space.en forall s \
+            & quad (t > t_0 and s in S_"avg") -> s(t) in ["known range"]
+        $
+
+    Environment: all possible cuts \
+    // DO NOT EXPAND OVER IT
+    we can have excluded species!
+]
+
+// Average quantities
+//
+// - $S' = S union { S_"avg" | s in S}$
+// - $S' = G(S')$
+// - $K: R -> RR_+^(|R|) = [10^(-6), 10^6]^(|R|)$
+
+$
+    limits(x)^dot = k_+ product_(i = 1)^s S_i^k_i - k_- product_(j = 1)^p P_j^k_j
+$
+
+$
+    limits(x)^dot = sum_(i = 1)^p "KP"_i - sum_(j = 1)^n "KN"_j
+$
+
+$
+    & { sum_(j = 1)^n "KN"_j > "KP"_i | i in {1, ..., p} } union \
+    & { sum_(i = 1)^n "KP"_i > "KN"_j | j in {1, ..., n} }
+$
+
+// OK,
+//
+// QUindi direi è inutile cercare l'info su fast nel grafo SBML, perché non ci sarà.
+//
+// Nel frattempo ho ricostruito il discorso che avevo iniziato l'ultima volta.
+//
+// la tipica equazione per la specie x avrà la forma
+//
+// der(x) = +KP_1... + KP_2... + ... KP_p - KN_1 ... - KN_2 ...  - ... KN_n
+//
+// in cui ci sono p termini con segno positivo (derivanti da reazioni che producono x)
+// ed n termini con segno negativo (derivanti da reazioni che consumano x).
+//
+// Ora, minimalmente, i negativi insieme dovrebbero essere in grado di "frenare" qualsiasi positivo da solo, altrimenti la crescita sarebbe inarrestabile.
+// Analogamente, i positivi dovrebbero essere in grado di accelerare qualsiasi negativo da solo, altrimenti la decrescita sarebbe inarrestabile.
+//
+// Quindi dovrebbe essere:
+//
+// KN_1 +  KN_2 + ... KN_n > KP_1
+// KN_1 +  KN_2 + ... KN_n > KP_2
+// ....
+// KN_1 +  KN_2 + ... KN_n > KP_p
+//
+// KP_1 + KP_2 + ... KP_p > KN_1
+// KP_1 + KP_2 + ... KP_p > KN_2
+// ...
+// KP_1 + KP_2 + ... KP_p > KN_n
+//
+// Poiché le equazioni si deducono dal grafo, forse questi vincoli si possono anche dedurre dal grafo.
+
+// HERE
+
+
+// #pagebreak()
+
+// == Parametric problem definition (design?)
+
+// - find $k$
+//
+// - subject to
+//     - structural constraints
+//         - partial order on $k$ due to
+//             - fast/non fast reactions (TODO: as given by Reactome, but how?)
+//             #logic[
+//                 $
+//                     & forall r_f, r_s space.en ( r_f in R_"fast" and r_s in R_"slow" ) -> r_f > r_s
+//                 $
+//             ]
+//             - reaction modifiers (like above?)
+//     - for all dynamics of environment
+//         - avg concentration of species consistent to knowledge
+//
+//         $
+//             & exists t_0 space.en forall t space.en forall s \
+//             & quad (t > t_0 and s in S_"avg") -> s(t) in ["known range"]
+//         $
+
+
+// - $forall s, r quad (s in S and r in R and (s, r) in E) => s ~> r$
+// - $forall s, r quad (s in S and r in R and (r, s) in E) => r ~> s$
+
+
+// - $forall m, r quad (m in S and r in R and (r, s) in E) => r ~> s$
+// A _model graph_ $G$ is a tuple $(S_T, P_T, S, R, E)$ s.t.
+// - $S_T$ is the set of target species
+// - $P_T$ is the set of target pathways
+// - $S$ is the finite set of species s.t.
+//     - $S_T subset.eq S$
+//     - $S$ is the set of species in the graph
+// - $R$ is the finite set of reactions
+// - $E$ is the set edges in the graph (an edge models the involvement of a
+//     species in a reaction either as a reactant, a product and a modifier)
+//     - $E subset.eq S times R times NN^+$
+//     - $E = E_"reactant" union E_"product" union E_"modifier"$
+// ]
+
+// #box(stroke: .1pt, inset: 1em)[
+//     #definition("transitive closure")[]
+// ]
+
+// - $S$ is the set of species in the transitive closure of $S_I$ within the
+//     Reactome graph
+// - $accent(s, dot) = f(s_1, s_2, s_3, ..., s_n)$
+
+// #definition("SBML model")[
+// (to be more precise, the closure within the specified bounds, bounds yet to be defined)
+// - $S' = S union {s_"avg" | s in S }$.
+
+// - $R = R_"fast" union R_"slow"$
+// - TODO: account for order (edges also have an "order" attribute, I have
+//     to check how it impacts the simulation and if it's optional)
+// ]
+
+// #pagebreak()
+// KN_1 +  KN_2 + ... KN_n > KP_1
+// KN_1 +  KN_2 + ... KN_n > KP_2
+// ....
+// KN_1 +  KN_2 + ... KN_n > KP_p
+//
+// KP_1 + KP_2 + ... KP_p > KN_1
+// KP_1 + KP_2 + ... KP_p > KN_2
+// ...
+// KP_1 + KP_2 + ... KP_p > KN_n
+
 
 
 #pagebreak()

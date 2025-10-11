@@ -32,7 +32,20 @@ def is_virtual_patient_valid(
             points=1000,
         )
 
+        # TODO: nomad (slow but smart)
+        # TODO: nevergrad (Meta)
+        # TODO: OpenAI
         # TODO: check result
+        # OpenBox
+        # estendo OpenBox
+        # https://open-box.readthedocs.io/en/latest/developers_guide/extend_openbox.html
+        # https://arxiv.org/pdf/1703.03864
+        # https://arxiv.org/abs/1703.03864
+
+        # approccio asincrono per continuo
+        # simgrid
+        # https://simgrid.org/doc/latest/
+        # container con dentro slurm
 
         # if not nitric_oxide.known_range.contains(result[-1][0]):
         #     return False

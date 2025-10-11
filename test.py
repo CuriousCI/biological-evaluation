@@ -37,7 +37,7 @@ def query_transitive_closure(
             apoc.path.subgraphNodes(
                 targetEntity,
                 {
-                    relationshipFilter: "<output|input>|catalystActivity>|physicalEntity>",
+                    relationshipFilter: "<output|input>|catalystActivity>|physicalEntity>|<regulatedBy|regulator>",
                     labelFilter: ">ReactionLikeEvent"
                 }
             )

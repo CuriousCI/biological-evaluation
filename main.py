@@ -1,9 +1,11 @@
-"""Guacamole."""
+""""""
 
-# TODO: https://www.proteomicsdb.org/
-# TODO: specie senza input, gene
-# TODO: più aumenta la distanza più la velocità
+# TODO: https://open-box.readthedocs.io/en/latest/developers_guide/extend_openbox.html
+# TODO: https://arxiv.org/abs/1703.03864
+# TODO: https://open-box.readthedocs.io/en/latest/examples/ask_and_tell.html
+# TODO: https://simgrid.org/doc/latest/Tutorial_MPI_Applications.html
 
+import argparse
 from pathlib import Path
 
 import libsbml
@@ -36,6 +38,8 @@ def main() -> None:
     )
     signal_transduction = Pathway(ReactomeDbId(162582))
     immune_system = Pathway(ReactomeDbId(168256))
+    adenosine_triphsphate = PhysicalEntity(ReactomeDbId(113592))
+    adenosine_diphsphate = PhysicalEntity(ReactomeDbId(29370))
 
     biological_scenario_definition: BiologicalScenarioDefinition = (
         BiologicalScenarioDefinition(
@@ -44,8 +48,12 @@ def main() -> None:
                 signal_transduction,
                 immune_system,
             },
-            constraints=[f"{nitric_oxide} > 0.01"],
-            max_depth=NonZeroNatural(3),
+            denied_physical_entities={
+                adenosine_triphsphate,
+                adenosine_diphsphate,
+            },
+            constraints=[],
+            max_depth=None,
         )
     )
 
@@ -65,14 +73,16 @@ def main() -> None:
             )
         )
 
+    # print(len(virtual_patient_details.parameters))
+    # exit(0)
     sbml_str = libsbml.writeSBMLToString(sbml_document)
-    # rr: roadrunner.RoadRunner = roadrunner.RoadRunner(sbml_str)
+    rr: roadrunner.RoadRunner = roadrunner.RoadRunner(sbml_str)
     with Path("test.sbml").open("w") as file:
         _ = file.write(sbml_str)
-    exit(0)
+    # exit(0)
 
     virtual_patients = []
-    for _ in range(10):
+    for _ in range(1):
         virtual_patient: VirtualPatient = virtual_patient_details()
 
         if is_virtual_patient_valid(rr, virtual_patient, environment):
@@ -84,6 +94,20 @@ def main() -> None:
 if __name__ == "__main__":
     main()
 
+# TODO: https://www.proteomicsdb.org/
+# TODO: which species are genes?
+# TODO: the further the distance from a gene the slower the speed of the reaction
+# TODO: One instance per physical entity per compartment?
+# that's how I handle it! species X_(c_1) reaction converts into X_(c_2) (also X, but in compartment c_2)
+# TODO: ReactionLikeEvent 'category' attribute
+# - "dissociation"
+# - "binding"
+# - "transition"
+# - "omitted"
+# - "uncertain"
+# TODO: add "debug/verbose mode" with additional annotations!
+# TODO: interesting, there are multiple compartments when a PhysicalEntity is in multiple complexes
+
 # TODO: rr.timeCourseSelections = [repr(nitric_oxide)]
 # TODO: might be useful to pass reactome url as argument! for docker compose!
 # TODO: add simulation time and steps to biological scenario definition
@@ -92,9 +116,7 @@ if __name__ == "__main__":
 # TODO: PA1-1 (10766891 10797661 10840473)
 
 # TODO: kinetic constant value in 10^-6 10^6 (review first stuff)
-# TODO: energetical supplying / demanding / neutral reactions
 # TODO: this is a macroscopical + phenomenological approach (compared to microscopical simulation of single components)
-# TODO: CatalystActivity has order and stoichiometry
 # TODO: consider protein transportation too!!!!! How do you handle it better?
 # TODO: maybe for transport reactions there are better laws to use
 
@@ -124,83 +146,4 @@ if __name__ == "__main__":
 # TODO: write constraints in terms of PhysicalEntity, a formula on PhysicalEntity, ReactionLikeEvent (somehow almost done)
 
 # TODO: parallelize on cluster
-# TODO: docs
-
-# MATCH (n {dbId: 202124})
-# CALL
-#     apoc.path.subgraphNodes(
-#         n,
-#         {
-#             relationshipFilter: ">input|<output|catalystActiviy>|physicalEntity>",
-#             labelFilter: ">ReactionLikeEvent",
-#             maxLevel: 3,
-#         }
-#     )
-# YIELD node
-# RETURN node
-
-# MATCH (targetPathway:Pathway)
-# WHERE targetPathway.dbId IN $target_pathways
-# CALL
-#     apoc.path.subgraphNodes(
-#         targetPathway,
-#         {
-#             relationshipFilter: "hasEvent>",
-#             labelFilter: ">ReactionLikeEvent",
-#             bfs: true
-#         }
-#     )
-# YIELD node
-# WITH COLLECT(node) AS speciesOfInterest
-# MATCH (n {dbId: 202124})
-# CALL
-#     apoc.path.subgraphNodes(
-#         n,
-#         {
-#             relationshipFilter: ">input|<output|catalystActiviy>|physicalEntity>",
-#             labelFilter: ">ReactionLikeEvent",
-#             maxLevel: 3
-#         }
-#     )
-# YIELD node
-# WHERE node in speciesOfInterest
-# RETURN node
-
-# WHERE reactionLikeEvent.speciesName = 'Homo sapiens'
-# SET reactionLikeEvent:TargetReactionLikeEvent
-
-
-# MATCH (physicalEntity:PhysicalEntity)<-[:input]-(reactionLikeEvent:ReactionLikeEvent)
-# MERGE (reactionLikeEvent)<-[:fixedPoint]-(physicalEntity);
-# MATCH (physicalEntity:PhysicalEntity)<-[:output]-(reactionLikeEvent:ReactionLikeEvent)
-# MERGE (physicalEntity)<-[:fixedPoint]-(reactionLikeEvent);
-# MATCH (reactionLikeEvent:ReactionLikeEvent)-->(:CatalystActivity)-[:physicalEntity]->(physicalEntity:PhysicalEntity)
-# MERGE (reactionLikeEvent)<-[:fixedPoint]-(physicalEntity);
-# MATCH (targetPathway:Pathway)
-# WHERE targetPathway.dbId IN [162582, 168256]
-# CALL
-#     apoc.path.subgraphNodes(
-#         targetPathway,
-#         {
-#             relationshipFilter: "hasEvent>",
-#             labelFilter: ">ReactionLikeEvent",
-#             bfs: true
-#         }
-#     )
-# YIELD node AS reactionLikeEvent
-# WHERE reactionLikeEvent.speciesName = 'Homo sapiens'
-# SET reactionLikeEvent:TargetReactionLikeEvent;
-# MATCH (targetEntity)
-# WHERE targetEntity.dbId IN [202124]
-# CALL
-#     apoc.path.subgraphNodes(
-#         targetEntity,
-#         {
-#             relationshipFilter: "<fixedPoint",
-#             labelFilter: ">TargetReactionLikeEvent",
-#             bfs: true,
-#             maxLevel: 3
-#         }
-#     )
-# YIELD node
-# RETURN COUNT(node);
+# TODO: docs; DONE (at least started)

@@ -1,4 +1,4 @@
-#import "logics.typ": *
+#import "logic.typ": *
 
 #show (
     figure.where(kind: "constraint").or(figure.where(kind: "operation"))
@@ -23,29 +23,16 @@
     body
 }
 
+#set text(font: "New Computer Modern", lang: "en", weight: "light", 11pt)
+#set page(margin: 1.5in)
+#set highlight(fill: luma(240))
+#set list(indent: 1em)
+
 #show heading: set block(above: 1.4em, below: 1em)
 #show outline.entry.where(level: 1): set text(weight: "bold")
 #show outline.entry.where(level: 1): set outline.entry(fill: none)
 #show link: it => underline(offset: 2pt, it)
-// #show math.equation: set text(
-//     font: "New Computer Modern Math",
-//     lang: "en",
-//     weight: "light",
-//     size: 10pt,
-// )
-// #show raw: set text(
-//     font: "New Computer Modern Math",
-//     lang: "en",
-//     weight: "light",
-//     size: 10pt,
-// )
-
-#set text(font: "New Computer Modern", lang: "en", weight: "light", 11pt)
-#set page(margin: 1.5in)
-// #set highlight(fill: rgb("fbf1c744"))
-// #set highlight(fill: rgb("#f5f5f5"))
-#set highlight(fill: rgb("fbf1c788"))
-#set list(indent: 1em)
+#show raw: set text(font: "LMMonoLt10", lang: "en", size: 11pt)
 
 #let proj-name = text(font: "LMMonoCaps10", "Bsys_eval")
 #let TODO(body) = box(fill: rgb("#f5f5f5"), inset: .75em)[
@@ -113,7 +100,7 @@ constraints), to generate a SBML model with
     [ *Algorithm 1*: eval],
 )
 #box(stroke: (bottom: .25pt), inset: (bottom: 1em))[
-    #indent-block[
+    #indent[
         *input*: $S_T$, set of #logic[PhysicalEntity]\; \
         *input*: $P_T$, set of target #logic[Pathway]\; \
         *input*: $C_T$, set of constraints on $S_T$; \
@@ -442,48 +429,48 @@ $
 
 *Math*
 
-#logic[Natural = Integer >= 0] \
-#logic[Interval = (lower_bound: Real [0..1], upper_bound: Real [0..1])] \
-#logic[MathML = String matching] https://www.w3.org/1998/Math/MathML/ \
-#logic[MathMLBoolean = String matching #logic[MathML] returning a boolean] \
-#logic[MathMLNumeric = String matching #logic[MathML] returning a number] \
-#logic[Stoichiometry = Natural > 0]
+#logic[`Natural = Integer >= 0`] \
+#logic[`Interval = (lower_bound: Real [0..1], upper_bound: Real [0..1])`] \
+#logic[`MathML = String matching`] https://www.w3.org/1998/Math/MathML/ \
+#logic[`MathMLBoolean = String` matching `MathML` returning a `Boolean`] \
+#logic[`MathMLNumeric = String` matching `MathML` returning a `Number`] \
+#logic[`Stoichiometry = Natural > 0`]
 
 *Reactome*
 
-#logic[ReactomeDbId = Natural] @reactome-DatabaseObject\
-#logic[StableIdVersion = \
-    ~ String matching regex ```js /^R-[A-Z]{3}-\d{1,8}\.\d{1,3}$/```]
+#logic[`ReactomeDbId = Natural`] @reactome-DatabaseObject\
+#logic[`StableIdVersion =
+    String` matching regex ```js /^R-[A-Z]{3}-\d{1,8}\.\d{1,3}$/```]
 @reactome-faq-identifiers \
 
 *SBML*
 
-#logic[String1 = String matching regex ```js //```] \
-#logic[SId = String matching regex ```js /^[a-zA-Z_]\w*$/```]
+#logic[`String1 = String` matching regex ```js //```] \
+#logic[`SId = String` matching regex ```js /^[a-zA-Z_]\w*$/```]
 #ref(
     <sbml>,
     supplement: [Section 3.1.7],
 ) \
-#logic[UnitSId = String matching regex ```js /^[a-zA-Z_]\w*$/```]
+#logic[`UnitSId = String` matching regex ```js /^[a-zA-Z_]\w*$/```]
 // #logic[ReactionItem = (SpeciesInstance, Stoichiometry)]
 //
 // TODO: if PhysicalEntity in Reaction is catalyst, then it cannot be a reactant
 
 == Interval
 
-The #logic[Interval] type represents an open interval in $RR$ of the type
+The #logic[`Interval`] type represents an open interval in $RR$ of the type
 $(#logic[lower_bound], #logic[upper_bound])$ s.t.
-- when #logic[lower_bound] is not defined, it is interpreted as $-infinity$
-- when #logic[upper_bound] is not defined, it is interpreted as $+infinity$
+- when #logic[`lower_bound`] is not defined, it is interpreted as $-infinity$
+- when #logic[`upper_bound`] is not defined, it is interpreted as $+infinity$
 
 #constraint(
-    [C.Interval.lower_bound_leq_upper_bound],
+    highlight(`C.Interval.lower_bound_leq_upper_bound`),
     ```
     forall interval, interval_lower_bound, interval_upper_bound
         (
             Interval(interval) and
-            lower_bound(interval, interval_lower_bound) and
-            upper_bound(interval, interval_upper_bound)
+            #lower_bound(interval, interval_lower_bound) and
+            #upper_bound(interval, interval_upper_bound)
         ) ->
             interval_lower_bound <= interval_upper_bound
     ```,
@@ -563,20 +550,20 @@ An additional constraint is required for active units, because _"If the
 // TODO: does it expand to multiple level complexes?
 
 #constraint(
-    [C.CatalystActivity.active_unit_is_component_of_complex],
+    highlight(`C.CatalystActivity.active_unit_is_component_of_complex`),
     ```
     forall catalyst_activity, complex, complex_component
         (
             CatalystActivity(catalyst_activity) and
             Complex(complex) and
             PhysicalEntity(complex_component) and
-            *catalyst_activity_entity*(catalyst_activity, complex) and
-            *catalyst_activity_active_unit*(
+            catalyst_activity_entity(catalyst_activity, complex) and
+            catalyst_activity_active_unit(
                 catalyst_activity,
                 complex_component
             )
         ) ->
-            *complex_has_component_entity*(complex, complex_component)
+            complex_has_component_entity(complex, complex_component)
     ```,
 )
 
@@ -629,20 +616,20 @@ or indirectly, in that pathway (see the #logic[included_reactions()] operation).
 There are about 34 top level pathways.
 
 #operation(
-    [included_reactions],
-    type: [ReactionLikeEvent [0..\*]],
+    `included_reactions`,
+    type: `ReactionLikeEvent [0..*]`,
     // prec: ```
     // ```,
     post: ```
     result =
         { reaction |
             ReactionLikeEvent(reaction) and
-            *pathway_has_event*(this, reaction) }
+            pathway_has_event(this, reaction) }
         $union$
         { reaction | exists pathway
             Pathway(pathway) and
-            *pathway_has_event*(this, pathway) and
-            included_reactions(pathway, reaction) }
+            pathway_has_event(this, pathway) and
+            #included_reactions(pathway, reaction) }
     ```,
 )
 
@@ -661,7 +648,7 @@ transitive closure of the _target entities_.
     type: [ReactionLikeEvent [0..\*]],
     post: ```
     result = { reaction |
-        ReactionLikeEvent(reaction) and *output*(this, reaction)
+        ReactionLikeEvent(reaction) and output(this, reaction)
     }
     ```,
 )
@@ -746,8 +733,8 @@ specified in the scenario, by including only reactions within the _target
     result = { object | exists entity
         PhysicalEntity(entity) and
         DatabaseObject(object) and
-        *target_physical_entity*(this, entity) and
-        produced_by(entity, object) and
+        target_physical_entity(this, entity) and
+        #produced_by(entity, object) and
         (
             not RestrictedDefinition(this) or
             exists pathway, reaction
@@ -756,8 +743,8 @@ specified in the scenario, by including only reactions within the _target
                 included_reactions(pathway, reaction) and
                 (
                     object = reaction or
-                    *entity_reaction*(object, reaction) or
-                    *catalyzed_reaction*(object, reaction)
+                    entity_reaction(object, reaction) or
+                    catalyzed_reaction(object, reaction)
                 )
         )
     }
@@ -897,6 +884,142 @@ specified in the scenario, by including only reactions within the _target
     ],
 )
 
+#pagebreak()
+
+= OpenBox on the Slurm Workload Manager
+
+The HPC cluster at the Computer Science Department has some restrictions in
+place, as it's used by many different teams / students and no single user can
+request the indefinite usage of the whole cluster for a single job (jobs have a
+time limit of 6, 24 or 72 hours based on permissions and resoruces required).
+
+// TODO: somehow store the OpenBox model of a job
+// TODO: test both "students" and "multicore" partition to see which is more convenient
+The goals of this section are to
+- be able to run an OpenBox throught *multiple sessions*
+- run *multiple smaller jobs* to increase *fairness* among users, instead of
+    running a single big job for the whole simulation
+- provide a simple framework that can be used *locally to simulate* executions
+    on the cluster
+
+== Analysis
+
+In order to use OpenBox on the cluster in different sessions, it's a good idea
+to store the results of the simulations in a database (i.e. PostgreSQL) to
+retrieve the data of different session for an overall analysis.
+
+#box(inset: (y: 5pt), align(center, image("./docs-openbox-jobs.svg")))
+
+=== Data types specification
+
+#logic[
+    `SlurmJobId = Integer >= 1` \
+    `String1 = String` matching regex ```js /^\S$|^\S.*\S$/```
+]
+
+#pagebreak()
+
+=== Classes specification
+
+==== Job
+
+#constraint(
+    highlight(`C.Job.all_parameters_are_instantiated`),
+    ```
+    forall job, blackbox, parameter
+      (
+        Job(job) and
+        Blackbox(blackbox) and
+        Parameter(parameter) and
+        blackbox_job(blackbox, job) and
+        blackbox_parameter(blackbox, parameter)
+      ) ->
+        exists parameter_instance
+          ParameterInstance(parameter_instance) and
+          instance_parameter(parameter_instance, parameter) and
+          job_parameter(job, parameter_instance)
+    ```,
+)
+
+#constraint(
+    highlight(`C.Job.continuity_1`),
+    ```
+    forall job, submit_time, start_time
+      (
+        Job(job) and
+        #submit_time(job, submit_time) and
+        #start_time(job, start_time)
+      ) ->
+        submit_time <= start_time
+    ```,
+)
+
+#constraint(
+    highlight(`C.Job.continuity_2`),
+    ```
+    forall job, start_time, end_time
+      (
+        Job(job) and
+        #start_time(job, start_time) and
+        #end_time(job, end_time)
+      ) ->
+        start_time <= end_time
+    ```,
+)
+
+#pagebreak()
+
+== Implementation
+
+Diagram restructuration for PostgreSQL. The SQL code is available in the
+`migration.sql` file.
+
+#box(inset: (y: 5pt), align(
+    center,
+    image("./docs-openbox-jobs-restructuration.svg"),
+))
+
+=== Data types definitions
+
+// TODO: I could just use a serial id, but it is nice to have the job_id that can be generated only by slurm, so one can't add a "fake job"
+```sql
+CREATE DOMAIN String1 AS varchar CHECK(value ~ '^\S$|^\S.*\S$');
+CREATE DOMAIN SlurmJobId AS integer CHECK(value >= 1);
+```
+
+=== Additional constraints
+
+==== Job
+
+#constraint(
+    highlight(`C.Job.end_implies_job_was_scheduled`),
+    ```
+    forall job, end_time
+      (Job(job) and #end_time(job, end_time)) ->
+        exists start_time #start_time(job, start_time)
+    ```,
+)
+
+A result is present if and only if the job ended
+
+#constraint(
+    highlight(`C.Job.result_only_on_end_time`),
+    ```
+    forall job, job_result
+      (Job(job) and #result(job, job_result)) ->
+        exists end_time #end_time(job, end_time)
+    ```,
+)
+
+#constraint(
+    highlight(`C.Job.end_time_only_on_result`),
+    ```
+    forall job, end_time
+      (Job(job) and #end_time(job, end_time)) ->
+        exists job_result #result(job, job_result)
+    ```,
+)
+
 #page(bibliography("bibliography.bib"))
 
 
@@ -985,4 +1108,17 @@ specified in the scenario, by including only reactions within the _target
 //
 // - it must satisfy structural constraints
 
+
+// #set highlight(fill: rgb("fbf1c788"))
+// #set highlight(fill: rgb("fbf1c744"))
+// #set highlight(fill: rgb("#f5f5f5"))
+// weight: "light",
+// size: 10pt,
+
+// #show math.equation: set text(
+//     font: "New Computer Modern Math",
+//     lang: "en",
+//     weight: "light",
+//     size: 10pt,
+// )
 

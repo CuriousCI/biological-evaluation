@@ -1,13 +1,15 @@
 [project]
-name = "bsys-eval"
+name = "biological-evaluation"
 version = "0.1.0"
-description = "Add your description here"
+description = "Plausability of biological scenarios through virtual patients"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "libroadrunner>=2.8.0",
     "neo4j>=5.28.2",
     "python-libsbml>=5.20.5",
+    "buckpass",
+    "biological-scenarios-generation"
 ]
 
 [dependency-groups]
@@ -17,31 +19,28 @@ dev = [
     "sphinxawesome-theme>=5.3.2",
 ]
 
+
+[tool.uv.sources]
+buckpass = { workspace = true }
+biological-scenarios-generation = { workspace = true }
+
+
+[tool.uv.workspace]
+members = ["packages/*"]
+
 [tool.ruff]
 line-length = 80
 
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
-    "E501", 
-    "S101", 
-    "D105",
-    "B019", # Use of `functools.lru_cache` or `functools.cache` on methods can lead to memory leaks
-    "TD003",
-    "TD002",
-    "FIX002",
-    "S311"
+    "S101", # Use of `assert` detected
 ]
 
 [tool.ruff.format]
 docstring-code-format = true
 docstring-code-line-length = "dynamic"
 
-[tool.basedpyright]
-reportUnknownParameterType = false
-reportUnknownArgumentType = false
-reportUnknownLambdaType = false
-reportUnknownVariableType = false
-reportUnknownMemberType = false
 
-# antlr4-python3-runtime attrs chaospy colorama contourpy cycler fonttools future importlib-metadata jsonschema jsonschema-specifications kiwisolver libroadrunner matplotlib mpmath neo4j numpoly numpy packaging pandas petab pillow pyarrow pynomadbbo pyparsing pyqt5 pyqt5-qt5 pyqt5-sip python-dateutil python-libsbml pytz pyyaml referencing rpds-py scipy seaborn setuptools six sympy tqdm tzdata zipp
+[tool.basedpyright]
+reportMissingTypeStubs = false

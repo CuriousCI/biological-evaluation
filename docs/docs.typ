@@ -687,14 +687,24 @@ involved in the production of #logic[this].
 
 // #TODO[handle active units too]
 
-#page(width: auto, height: 841.89pt, margin: 20pt)[
-    = _(Biological scenario definition)_ UML class diagram
-    // #align(center + horizon, image("docs-2.svg", height: 770pt))
-    #align(center + horizon, image(
-        "docs-biological-scenario-definition.svg",
-        height: 770pt,
-    ))
-]
+// #page(width: auto, height: 841.89pt, margin: 20pt)[
+//     = _(Biological scenario definition)_ UML class diagram
+//     // #align(center + horizon, image("docs-2.svg", height: 770pt))
+//     #align(center + horizon, image(
+//         "docs-biological-scenario-definition.svg",
+//         height: 770pt,
+//     ))
+// ]
+
+#page(
+    flipped: true,
+    width: auto,
+    height: auto,
+    align(center + horizon, image("docs-biological-scenario-definition.svg")),
+)
+
+// = _(Biological scenario definition)_ UML class diagram
+
 
 
 = Classes specification pt. 2
@@ -908,6 +918,12 @@ In order to use OpenBox on the cluster in different sessions, it's a good idea
 to store the results of the simulations in a database (i.e. PostgreSQL) to
 retrieve the data of different session for an overall analysis.
 
+// #page(
+//     flipped: true,
+//     width: auto,
+//     height: auto,
+//     align(center + horizon, image("docs-biological-scenario-definition.svg")),
+// )
 #box(inset: (y: 5pt), align(center, image("./docs-openbox-jobs.svg")))
 
 === Data types specification
@@ -934,10 +950,7 @@ retrieve the data of different session for an overall analysis.
         blackbox_job(blackbox, job) and
         blackbox_parameter(blackbox, parameter)
       ) ->
-        exists parameter_instance
-          ParameterInstance(parameter_instance) and
-          instance_parameter(parameter_instance, parameter) and
-          job_parameter(job, parameter_instance)
+        job_parameter(job, parameter)
     ```,
 )
 
@@ -1022,6 +1035,22 @@ A result is present if and only if the job ended
 
 #page(bibliography("bibliography.bib"))
 
+// #operation(
+//     `ultima_manutenzione`,
+//     args: `i: Istante`,
+//     type: `Manutenzione`,
+//     prec: ```
+//     exists $m$ manu_auto(this, $m$)
+//     ```,
+//     post: ```
+//     A = {($m$, $i_m$) |
+//         manu_auto($m$, this) and
+//         #istante($m$, $i_m$)
+//     }
+//
+//     result in $limits("argmax")_((m, i_m) in A) space  i_m$
+//     ```,
+// )
 
 
 // == "Study" use-case
@@ -1122,3 +1151,13 @@ A result is present if and only if the job ended
 //     size: 10pt,
 // )
 
+// #logic[
+//     ```
+//     A = {(nol, costo) | exists ist
+//         soc_nol(this, nol) and
+//         calcola_costo_totale(nol, costo) and
+//         #istante_noleggio(nol, ist) and
+//         i <= ist <= f
+//     }
+//     ```
+// ]

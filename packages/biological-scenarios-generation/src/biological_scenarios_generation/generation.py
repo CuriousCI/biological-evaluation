@@ -1,248 +1,32 @@
-""""""
-
-# pyright: reportAny = false
-
-import math
+from functools import reduce
+from operator import attrgetter
 import random
-import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum
-from functools import cache, reduce
-from operator import attrgetter
-from typing import LiteralString, Self, override
+from typing import TypeAlias
 
 import libsbml
-import neo4j
-
-FIRST = 0
-
-type StableIdVersion = str
-
-type MathML = str
-
-type MathMLBool = MathML
-
-
-@dataclass(frozen=True, eq=False, repr=False)
-class Interval:
-    """Open real interval."""
-
-    lower_bound: float = float("-inf")
-    upper_bound: float = float("inf")
-
-    def __post_init__(self) -> None:
-        assert not self.lower_bound or not math.isnan(self.lower_bound)
-        assert not self.upper_bound or not math.isnan(self.upper_bound)
-        # TODO: [C.Interval.lower_bound_leq_upper_bound]
-        assert (
-            not self.lower_bound
-            or not self.upper_bound
-            or self.lower_bound <= self.upper_bound
-        )
-
-    def contains(self, value: float) -> bool:
-        """Check if a value is contained within a the interval."""
-        return (not self.lower_bound or value > self.lower_bound) and (
-            not self.upper_bound or value < self.upper_bound
-        )
-
-
-@dataclass
-class BiologicalNumber:
-    id: int
-    properties: str
-    organistm: str
-    value: Interval | float | None
-    units: str
-    keywords: set[str]
-
-
-class Natural(int):
-    """Number n such that n >= 0."""
-
-    def __new__(cls, value: int) -> Self:
-        assert value >= 0
-        return super().__new__(cls, value)
-
-
-class NonZeroNatural(int):
-    """Number n such that n > 0."""
-
-    def __new__(cls, value: int) -> Self:
-        assert value > 0
-        return super().__new__(cls, value)
-
-
-class ReactomeDbId(Natural):
-    """Identifier for objects in Reactome.
-
-    Objects in the Reactome Knowledgebase all have a `dbId` attribute as an
-    identifier
-    """
-
-    @staticmethod
-    def from_stable_id_version(st_id: StableIdVersion) -> "ReactomeDbId":
-        """Convert from a StableIdVersion to a basic ReactomeDbId.
-
-        In the "Reactome Pathway Browser" objects are identified with their full
-        StableIdVersion, from which the corresponding ReactomeDbId can be extracted
-        """
-        match = re.search("R-[A-Z]{3}-([0-9]{1,8})([.][0-9]{1,3})?$", st_id)
-        assert match
-        return ReactomeDbId(int(match.group()))
-
-
-class Stoichiometry(NonZeroNatural):
-    """Stoichiometry is the relationships between the quantities of reactants."""
-
-
-@dataclass(frozen=True)
-class DatabaseObject:
-    """The root term of the Reactome data model, parent to all classes of instances."""
-
-    id: ReactomeDbId
-
-    @override
-    def __hash__(self) -> int:
-        return self.id.__hash__()
-
-    @override
-    def __eq__(self, value: object, /) -> bool:
-        return isinstance(value, DatabaseObject) and self.id.__eq__(value.id)
-
-    def __int__(self) -> int:
-        # return self.id.value
-        return self.id
-
-    @override
-    def __repr__(self) -> str:
-        return f"{self.id}"
-
-
-class CatalystActivity(DatabaseObject):
-    pass
-
-
-@dataclass(frozen=True, eq=False)
-class Compartment(DatabaseObject):
-    display_name: str
-
-    @override
-    def __repr__(self) -> str:
-        return f"compartment_{super().__repr__()}"
-
-
-# @override
-# def __hash__(self) -> int:
-#     return super().__hash__()
-#
-# @override
-# def __eq__(self, value: object, /) -> bool:
-#     return super().__eq__(value)
-
-
-@dataclass(frozen=True, eq=False)
-class PhysicalEntity(DatabaseObject):
-    """PhysicalEntity is a physical substance that can interact with other substances.
-
-    PhysicalEntities include all kinds of small molecules, proteins, nucleic
-    acids, chemical compounds, complexes, larger macromolecular assemblies, atoms
-    (including ionized atoms), electrons, and photons.
-    """
-
-    known_range: Interval = Interval()
-    compartments: set[Compartment] = field(default_factory=set)
-
-    @override
-    def __repr__(self) -> str:
-        return f"species_{super().__repr__()}"
-
-
-class Event(DatabaseObject):
-    pass
-
-
-@dataclass(frozen=True)
-class PhysicalEntityReactionLikeEvent:
-    class Type(Enum):
-        INPUT = 1
-        OUTPUT = 2
-
-    physical_entity: PhysicalEntity
-    stoichiometry: Stoichiometry
-    type: Type
-
-    @override
-    def __hash__(self) -> int:
-        return self.physical_entity.__hash__()
-
-    @override
-    def __eq__(self, value: object, /) -> bool:
-        return isinstance(
-            value,
-            PhysicalEntityReactionLikeEvent,
-        ) and self.physical_entity.__eq__(value.physical_entity)
-
-    @override
-    def __repr__(self) -> str:
-        return f"({self.physical_entity}^{self.stoichiometry})"
-
-
-@dataclass(frozen=True, eq=False)
-class ReactionLikeEvent(Event):
-    """Used to organize other concrete reaction types (Reaction, Polymerization and BlackBoxEvent...).
-
-    A molecular process in which one or more input physical entities are transformed in a single step into output physical entities, optionally mediated by a catalyst activity and subject to regulation
-    """
-
-    physical_entities: set[PhysicalEntityReactionLikeEvent]
-    enzymes: set[PhysicalEntity] = field(default_factory=set)
-    compartments: set[Compartment] = field(default_factory=set)
-    is_reversible: bool = False
-    is_fast: bool = False
-    positive_regulators: set[PhysicalEntity] = field(default_factory=set)
-    negative_regulators: set[PhysicalEntity] = field(default_factory=set)
-
-    @cache
-    def reactants(self) -> set[PhysicalEntityReactionLikeEvent]:
-        return {
-            relationship
-            for relationship in self.physical_entities
-            if relationship.type == PhysicalEntityReactionLikeEvent.Type.INPUT
-        }
-
-    @cache
-    def products(self) -> set[PhysicalEntityReactionLikeEvent]:
-        return self.physical_entities - self.reactants()
-
-    @override
-    def __repr__(self) -> str:
-        return f"reaction_{super().__repr__()}"
-
-
-class Pathway(Event):
-    pass
-
-
-# @dataclass(frozen=True)
-# class Parameter:
-#     parameter: libsbml.Parameter
-#
-#     @override
-#     def __hash__(self) -> int:
-#         return self.parameter.getId().__hash__()
-#
-#     @override
-#     def __eq__(self, value: object, /) -> bool:
-#         return isinstance(value, Parameter) and self.parameter.getId().__eq__(
-#             value.parameter.getId(),
-#         )
-
-
-type SId = str
-
-type VirtualPatient = dict[SId, float]
+import noe4j
+
+from biological_scenarios_generation.core import IntGTZ
+from biological_scenarios_generation.reactome import (
+    Compartment,
+    MathML,
+    MathMLBool,
+    Pathway,
+    PhysicalEntity,
+    PhysicalEntityReactionLikeEvent,
+    ReactionLikeEvent,
+    ReactomeDbId,
+    Stoichiometry,
+)
+from biological_scenarios_generation.sbml import SId
+
+VirtualPatient = dict[SId, float]
+
+# TODO: magic, basically annotate with k_ virtual patient parameters (or "v_")
+# TODO: magic, basically annotate with e_ environment vars
 
 
 @dataclass(frozen=True)
@@ -264,6 +48,10 @@ class VirtualPatientDetails:
 
         return virtual_patient
 
+    @staticmethod
+    def from_sbml(sbml: str) -> None:
+        pass
+
     # species: set[Parameter]
 
 
@@ -272,6 +60,10 @@ class Environment:
     """An environment dictates the initial conditions of the simulation (initial amounts of the species)."""
 
     physical_entities: set[PhysicalEntity]
+
+    @staticmethod
+    def from_sbml(sbml: str) -> None:
+        pass
 
 
 class BaseKineticLaw(Enum):
@@ -340,12 +132,12 @@ class BaseKineticLaw(Enum):
                 return ("", [])
 
 
-type CustomKineticLaw = Callable[
+CustomKineticLaw: TypeAlias = Callable[
     [libsbml.Model, ReactionLikeEvent],
     tuple[MathML, list[libsbml.Parameter]],
 ]
 
-type KineticLaw = BaseKineticLaw | CustomKineticLaw
+KineticLaw: TypeAlias = BaseKineticLaw | CustomKineticLaw
 
 
 @dataclass(frozen=True)
@@ -355,8 +147,8 @@ class BiologicalScenarioDefinition:
     target_physical_entities: set[PhysicalEntity]
     target_pathways: set[Pathway] | None
     constraints: list[MathMLBool]
-    max_depth: NonZeroNatural | None = None
-    denied_physical_entities: set[PhysicalEntity] = field(default_factory=set)
+    max_depth: IntGTZ | None = None
+    excluded_physical_entities: set[PhysicalEntity] = field(default_factory=set)
     default_kinetic_law: KineticLaw = BaseKineticLaw.LAW_OF_MASS_ACTION
     kinetic_laws: dict[ReactionLikeEvent, KineticLaw] = field(
         default_factory=dict,
@@ -479,7 +271,7 @@ class BiologicalScenarioDefinition:
         records: list[neo4j.Record]
         target_physical_entities = list(map(int, self.target_physical_entities))
         excluded_physical_entities = list(
-            map(int, self.denied_physical_entities),
+            map(int, self.excluded_physical_entities),
         )
 
         if self.target_pathways:
@@ -511,7 +303,7 @@ class BiologicalScenarioDefinition:
                 target_physical_entities=target_physical_entities,
             )
 
-        val = records[FIRST]["reactions"]
+        val = records[0]["reactions"]
         reaction_like_events: set[ReactionLikeEvent] = {
             ReactionLikeEvent(
                 id=reaction["id"],
@@ -636,9 +428,9 @@ class BiologicalScenarioDefinition:
                     compartment.setSize(1)
                     compartment.setSpatialDimensions(3)
                     compartment.setUnits("litre")
-                    compartment.appendNotes(
-                        f'<body xmlns="http://www.w3.org/1999/xhtml"><p>{obj.display_name}</p></body>',
-                    )
+                    # compartment.appendNotes(
+                    #     f'<body xmlns="http://www.w3.org/1999/xhtml"><p>{obj.display_name}</p></body>',
+                    # )
                 case PhysicalEntity():
                     species: libsbml.Species = sbml_model.createSpecies()
                     species.setId(repr(obj))
@@ -674,7 +466,7 @@ class BiologicalScenarioDefinition:
                                 species_ref = sbml_model.createProduct()
 
                         species_ref.setSpecies(
-                            repr(relationship.physical_entity)
+                            repr(relationship.physical_entity),
                         )
                         species_ref.setConstant(False)
                         species_ref.setStoichiometry(
@@ -711,10 +503,3 @@ class BiologicalScenarioDefinition:
 # time_rule: libsbml.Rule = sbml_model.createRateRule()
 # time_rule.setVariable("t_time")
 # time_rule.setFormula("1")
-
-
-# class SId:
-#     pass
-# @dataclass(frozen=True)
-# class narameter:
-#     id: SId

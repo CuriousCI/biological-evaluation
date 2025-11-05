@@ -10,10 +10,10 @@ import neo4j
 
 from biological_scenarios_generation.core import IntGTZ
 from biological_scenarios_generation.model import (
-    EnvironmentYielder,
+    EnvironmentGenerator,
     Model,
     SId,
-    VirtualPatientYielder,
+    VirtualPatientGenerator,
 )
 from biological_scenarios_generation.reactome import (
     Compartment,
@@ -73,7 +73,7 @@ class BaseKineticLaw(Enum):
 
                 formula_hill_component: str = ""
                 modifiers_functions: list[str] = []
-                for id, (modifier, role) in enumerate(
+                for modifier_id, (modifier, role) in enumerate(
                     reaction_like_event.modifiers()
                 ):
                     hill_function: str
@@ -85,12 +85,14 @@ class BaseKineticLaw(Enum):
                                 sbml_model.createParameter()
                             )
 
-                            constant: str = f"k_half_{id}_{reaction_like_event}"
-                            half_saturation_constant.setId(constant)
+                            constant_id: str = (
+                                f"k_half_{modifier_id}_{reaction_like_event}"
+                            )
+                            half_saturation_constant.setId(constant_id)
                             half_saturation_constant.setValue(1.0)
                             parameters.append(half_saturation_constant)
                             hill_function = (
-                                f"({modifier} / ({constant} + {modifier}))"
+                                f"({modifier} / ({constant_id} + {modifier}))"
                             )
                             modifiers_functions.append(hill_function)
 
@@ -456,6 +458,6 @@ class BiologicalScenarioDefinition:
 
         return (
             sbml_document,
-            VirtualPatientYielder(virtual_patient_details),
-            EnvironmentYielder(env_physical_entities),
+            VirtualPatientGenerator(virtual_patient_details),
+            EnvironmentGenerator(env_physical_entities),
         )

@@ -16,7 +16,7 @@ VirtualPatient: TypeAlias = dict[SId, ValidRealParameter]
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class VirtualPatientYielder:
+class VirtualPatientGenerator:
     """A virtual patient is described by the set of parameters."""
 
     parameters: set[SId]
@@ -35,7 +35,7 @@ Environment: TypeAlias = dict[SId, NormalizedReal]
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class EnvironmentYielder:
+class EnvironmentGenerator:
     """An environment dictates the initial conditions of the simulation (initial amounts of the species)."""
 
     physical_entities: set[PhysicalEntity]
@@ -46,22 +46,23 @@ class EnvironmentYielder:
 
 
 Model: TypeAlias = tuple[
-    libsbml.SBMLDocument, VirtualPatientYielder, EnvironmentYielder
+    libsbml.SBMLDocument, VirtualPatientGenerator, EnvironmentGenerator
 ]
 
 
-def load_document(document: libsbml.SBMLDocument) -> Model:
+def load_model_from_document(document: libsbml.SBMLDocument) -> Model:
     sbml_model: libsbml.Model = document.getModel()
 
     return (
         document,
-        VirtualPatientYielder(
+        VirtualPatientGenerator(
             {
                 parameter.getId()
                 for parameter in sbml_model.getListOfParameters()
+                # TODO: exclude _half, or at least have a separate domain for them
             }
         ),
-        EnvironmentYielder(
+        EnvironmentGenerator(
             {
                 physical_entity.getId()
                 for physical_entity in sbml_model.getListOfSpecies()

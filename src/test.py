@@ -1,4 +1,4 @@
-from typing import LiteralString
+from typing import LiteralString, TypeAlias
 
 import neo4j
 
@@ -6,9 +6,9 @@ URI = "neo4j://localhost:7687"
 AUTH = ("noe4j", "neo4j")
 DB = "graph.db"
 
-type PhysicalEntityId = int
-type PathwayId = int
-type ReactionLikeEventId = int
+PhysicalEntityId: TypeAlias = int
+PathwayId: TypeAlias = int
+ReactionLikeEventId: TypeAlias = int
 
 FIRST: int = 0
 
@@ -53,8 +53,7 @@ def query_transitive_closure(
 
 
 def query_reaction_like_events_for_test(
-    driver: neo4j.Driver,
-    test: LiteralString,
+    driver: neo4j.Driver, test: LiteralString
 ) -> tuple[set[ReactionLikeEventId], neo4j.Record]:
     """Instantiate test, calculate transitive closure, return results and cleanup test instance."""
     records: list[neo4j.Record]
@@ -62,9 +61,7 @@ def query_reaction_like_events_for_test(
     row: neo4j.Record = records[FIRST]
 
     reaction_like_events = query_transitive_closure(
-        driver,
-        {row["e1"]},
-        {row["p1"]},
+        driver, {row["e1"]}, {row["p1"]}
     )
 
     _ = driver.execute_query(

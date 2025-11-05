@@ -20,30 +20,30 @@ submit_job=false
 submit_batch_job=false
 
 # File containing the cypher query (requires cypher file)
-cypher_file=''
+cypher_filename=''
 
-# File in which to store a job logs (requires log file)
-log_file=''
+# File in which to store a job logs (requires logs file)
+logs_filename=''
 
 # File in which to store the results of a query (requires out file)
-out_file=''
+stdout_filename=''
 
 # Job id to wait before launching the next batch job
 jobid_to_wait_for=''
 
-while getopts bc:dl:o:q:sj:w: option; do
+while getopts bc:dj:l:o:q:sw: option; do
     case $option in
         b) build_reactome_sif=true;;
         s) run_reactome_sif_with_slurm_interactive=true;;
         d) run_reactome_locally_with_docker=true;;
 
-        c) exec_cypher_query=true; cypher_file="$OPTARG";;
-        j) submit_job=true; cypher_file="$OPTARG";;
-        q) submit_batch_job=true; cypher_file="$OPTARG";;
+        c) exec_cypher_query=true; cypher_filename="$OPTARG";;
+        j) submit_job=true; cypher_filename="$OPTARG";;
+        q) submit_batch_job=true; cypher_filename="$OPTARG";;
         w) jobid_to_wait_for="$OPTARG";;
 
-        l) log_file="$OPTARG";;
-        o) out_file="$OPTARG";;
+        l) logs_filename="$OPTARG";;
+        o) stdout_filename="$OPTARG";;
     esac
 done
 
@@ -69,10 +69,10 @@ exec_query_file() {
 }
 
 if $exec_cypher_query; then 
-    basename="$(basename $cypher_file '.cypher')"
+    basename="$(basename $cypher_filename '.cypher')"
 
-    if [ -z "$log_file" ]; then 
-        log_file="./logs/$basename.log"
+    if [ -z "$logs_filename" ]; then 
+        logs_filename="./logs/$basename.log"
     fi
 
     {
@@ -90,45 +90,45 @@ if $exec_cypher_query; then
                 iteration=$((iteration + 1))
             done
         }
-    } 2> $log_file 
+    } 2> $logs_filename 
 
     { 
-        if [ -z "$out_file" ]; then 
-            out_file="./logs/$basename.out"
+        if [ -z "$stdout_filename" ]; then 
+            stdout_filename="./logs/$basename.out"
         fi
 
-        time exec_query_file $cypher_file > $out_file 
-    } 2>> $log_file 
+        time exec_query_file $cypher_filename > $stdout_filename 
+    } 2>> $logs_filename 
 fi
 
 if $submit_job; then
-    args=( "-c $cypher_file" )
+    args=( "-c $cypher_filename" )
     
-    if [ -n "$out_file" ]; then 
-        args+=( "-o $out_file" ) 
+    if [ -n "$stdout_filename" ]; then 
+        args+=( "-o $stdout_filename" ) 
     fi
 
-    if [ -n "$log_file" ]; then 
-        args+=( "-l $log_file" ) 
+    if [ -n "$logs_filename" ]; then 
+        args+=( "-l $logs_filename" ) 
     fi
 
-    basename="$(basename $cypher_file '.cypher')"
+    basename="$(basename $cypher_filename '.cypher')"
     srun -J "reactome_$basename" --partition multicore --mem 131072 singularity run --writable reactome.sif ./reactome.sh "${args[@]}"
 fi
 
 if $submit_batch_job; then
-    args=( "-c $cypher_file" )
+    args=( "-c $cypher_filename" )
     
-    if [ -n "$out_file" ]; then 
-        args+=( "-o $out_file" ) 
+    if [ -n "$stdout_filename" ]; then 
+        args+=( "-o $stdout_filename" ) 
     fi
 
-    if [ -n "$log_file" ]; then 
-        args+=( "-l $log_file" ) 
+    if [ -n "$logs_filename" ]; then 
+        args+=( "-l $logs_filename" ) 
     fi
 
-    echo $cypher_file
-    basename="$(basename $cypher_file '.cypher')"
+    echo $cypher_filename
+    basename="$(basename $cypher_filename '.cypher')"
     echo "#!/bin/bash" > temp.job
     echo "singularity run --writable reactome.sif ./reactome.sh ${args[@]}" >> temp.job
     chmod +x temp.job

@@ -1,14 +1,28 @@
 import math
-from dataclasses import dataclass
-from typing import Self
+from dataclasses import dataclass, field
+from typing import Self, TypeAlias
 
 
-@dataclass(frozen=True, eq=False, repr=False)
+class IntGEZ(int):
+    """int greater or equal to 0."""
+
+    def __new__(cls, value: int) -> Self:
+        assert value >= 0
+        return super().__new__(cls, value)
+
+
+class IntGTZ(int):
+    """int greater than 0."""
+
+    def __new__(cls, value: int) -> Self:
+        assert value > 0
+        return super().__new__(cls, value)
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class Interval:
-    """open real interval."""
-
-    lower_bound: float = float("-inf")
-    upper_bound: float = float("inf")
+    lower_bound: float = field(default=float("-inf"))
+    upper_bound: float = field(default=float("+inf"))
 
     def __post_init__(self) -> None:
         assert not self.lower_bound or not math.isnan(self.lower_bound)
@@ -22,47 +36,25 @@ class Interval:
 
     def contains(self, value: float) -> bool:
         """Check if a value is contained within a the interval."""
-        return (not self.lower_bound or value > self.lower_bound) and (
-            not self.upper_bound or value < self.upper_bound
+        return (not self.lower_bound or value >= self.lower_bound) and (
+            not self.upper_bound or value <= self.upper_bound
         )
 
 
-class IntGEZ(int):
-    """int >= 0."""
+class NormalizedReal(float):
+    """float in [0, 1]."""
 
     def __new__(cls, value: int) -> Self:
-        assert value >= 0
+        assert 0 <= value <= 1
         return super().__new__(cls, value)
 
 
-class IntGTZ(int):
-    """int > 0."""
+__PARAMETERS_SPACE_BOUND: float = 20.0
+
+
+class ValidRealParameter(float):
+    """float in [-20, 20]."""
 
     def __new__(cls, value: int) -> Self:
-        assert value > 0
+        assert -__PARAMETERS_SPACE_BOUND <= value <= __PARAMETERS_SPACE_BOUND
         return super().__new__(cls, value)
-
-
-# @dataclass
-# class BiologicalNumber:
-#     id: int
-#     properties: str
-#     organistm: str
-#     value: Interval | float | None
-#     units: str
-#     keywords: set[str]
-
-
-# @dataclass(frozen=True)
-# class Parameter:
-#     parameter: libsbml.Parameter
-#
-#     @override
-#     def __hash__(self) -> int:
-#         return self.parameter.getId().__hash__()
-#
-#     @override
-#     def __eq__(self, value: object, /) -> bool:
-#         return isinstance(value, Parameter) and self.parameter.getId().__eq__(
-#             value.parameter.getId(),
-#         )

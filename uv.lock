@@ -103,16 +103,11 @@ dependencies = [
     { name = "requests" },
 ]
 
-[package.dev-dependencies]
-dev = [
-    { name = "typing-extensions" },
-]
-
 [package.metadata]
 requires-dist = [{ name = "requests", specifier = ">=2.32.4" }]
 
 [package.metadata.requires-dev]
-dev = [{ name = "typing-extensions", specifier = ">=4.13.2" }]
+dev = []
 
 [[package]]
 name = "certifi"

@@ -9,6 +9,12 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = [
-    "typing-extensions>=4.13.2",
-]
+dev = []
+
+[tool.pyright]
+venvPath = "../../"
+venv = ".venv"
+reportMissingTypeStubs = false
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false

@@ -1,16 +1,12 @@
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from enum import Enum
-from functools import cache
+from enum import StrEnum, auto
 from typing import TypeAlias
 
 from typing_extensions import override
 
-from biological_scenarios_generation.core import (
-    Interval,
-    IntGEZ,
-    IntGTZ,
-)
+from biological_scenarios_generation.core import Interval, IntGEZ, IntGTZ
 
 MathML: TypeAlias = str
 
@@ -42,9 +38,9 @@ class Stoichiometry(IntGTZ):
     """Relationships between the quantities of the reactants in a reaction."""
 
 
-@dataclass(frozen=True)
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class DatabaseObject:
-    """The root term of the Reactome data model, parent to all classes of instances."""
+    """Parent to all classes of instances in the Reactome Data Model."""
 
     id: ReactomeDbId
 
@@ -68,23 +64,23 @@ class CatalystActivity(DatabaseObject):
     pass
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class Compartment(DatabaseObject):
     @override
     def __repr__(self) -> str:
         return f"compartment_{super().__repr__()}"
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class PhysicalEntity(DatabaseObject):
     """PhysicalEntity is a physical substance that can interact with other substances.
 
     PhysicalEntities include all kinds of small molecules, proteins, nucleic
-    acids, chemical compounds, complexes, larger macromolecular assemblies, atoms
-    (including ionized atoms), electrons, and photons.
+    acids, chemical compounds, complexes, larger macromolecular assemblies,
+    atoms (including ionized atoms), electrons, and photons.
     """
 
-    known_range: Interval = Interval()
+    known_interval: Interval = field(default_factory=Interval)
     compartments: set[Compartment] = field(default_factory=set)
 
     @override
@@ -92,69 +88,69 @@ class PhysicalEntity(DatabaseObject):
         return f"species_{super().__repr__()}"
 
 
+class StandardRole(StrEnum):
+    INPUT = auto()
+    OUTPUT = auto()
+
+
+class ModifierRole(StrEnum):
+    ENZYME = auto()
+    POSITIVE_REGULATOR = auto()
+    POSITIVE_GENE_REGULATOR = auto()
+    NEGATIVE_REGULATOR = auto()
+    NEGATIVE_GENE_REGULATOR = auto()
+
+
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+class StandardRoleInformation:
+    stoichiometry: Stoichiometry
+    role: StandardRole
+
+
+Role: TypeAlias = StandardRoleInformation | ModifierRole
+
+
 class Event(DatabaseObject):
     pass
 
 
-@dataclass(frozen=True)
-class PhysicalEntityReactionLikeEvent:
-    class Type(Enum):
-        INPUT = 1
-        OUTPUT = 2
-
-    physical_entity: PhysicalEntity
-    stoichiometry: Stoichiometry
-    type: Type
-
-    @override
-    def __hash__(self) -> int:
-        return self.physical_entity.__hash__()
-
-    @override
-    def __eq__(self, value: object, /) -> bool:
-        return isinstance(
-            value,
-            PhysicalEntityReactionLikeEvent,
-        ) and self.physical_entity.__eq__(value.physical_entity)
-
-    @override
-    def __repr__(self) -> str:
-        return f"({self.physical_entity}^{self.stoichiometry})"
+class Pathway(Event):
+    pass
 
 
-@dataclass(frozen=True, eq=False)
+@dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class ReactionLikeEvent(Event):
-    """Used to organize other concrete reaction types (Reaction, Polymerization and BlackBoxEvent...).
+    """Used to organize other concrete reaction types (Reaction, Polymerization, BlackBoxEvent...).
 
-    A molecular process in which one or more input physical entities are transformed
-    in a single step into output physical entities, optionally mediated by a catalyst
-    activity and subject to regulation
+    A molecular process in which one or more input physical entities are
+    transformed in a single step into output physical entities, optionally
+    mediated by a catalyst activity and subject to regulation
     """
 
-    physical_entities: set[PhysicalEntityReactionLikeEvent]
-    enzymes: set[PhysicalEntity] = field(default_factory=set)
+    physical_entities: Mapping[PhysicalEntity, Role]
     compartments: set[Compartment] = field(default_factory=set)
-    is_reversible: bool = False
-    is_fast: bool = False
-    positive_regulators: set[PhysicalEntity] = field(default_factory=set)
-    negative_regulators: set[PhysicalEntity] = field(default_factory=set)
-
-    @cache
-    def reactants(self) -> set[PhysicalEntityReactionLikeEvent]:
-        return {
-            relationship
-            for relationship in self.physical_entities
-            if relationship.type == PhysicalEntityReactionLikeEvent.Type.INPUT
-        }
-
-    @cache
-    def products(self) -> set[PhysicalEntityReactionLikeEvent]:
-        return self.physical_entities - self.reactants()
+    is_reversible: bool = field(default=False)
 
     @override
     def __repr__(self) -> str:
         return f"reaction_{super().__repr__()}"
 
+    def modifiers(
+        self, modifier_role: ModifierRole | None = None
+    ) -> set[tuple[PhysicalEntity, ModifierRole]]:
+        return {
+            (physical_entity, role)
+            for physical_entity, role in self.physical_entities.items()
+            if isinstance(role, ModifierRole)
+            and (modifier_role is None or role == modifier_role)
+        }
 
-class Pathway(Event):
-    pass
+    def entities(
+        self, standard_role: StandardRole | None = None
+    ) -> set[tuple[PhysicalEntity, StandardRoleInformation]]:
+        return {
+            (physical_entity, role)
+            for physical_entity, role in self.physical_entities.items()
+            if isinstance(role, StandardRoleInformation)
+            and (standard_role is None or role.role == standard_role)
+        }

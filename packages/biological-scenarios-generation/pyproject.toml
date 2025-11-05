@@ -12,3 +12,11 @@ dependencies = [
 
 [dependency-groups]
 dev = []
+
+[tool.pyright]
+venvPath = "../../"
+venv = ".venv"
+reportMissingTypeStubs = false
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false

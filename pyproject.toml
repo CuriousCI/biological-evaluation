@@ -34,13 +34,29 @@ line-length = 80
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
+    "D100", # Missing docstring in public module
+    "D101", # Missing docstring in public class
+    "D102", # Missing docstring in public method
+    "D103", # Missing docstring in public function
+    "D105", # Missing docstring in magic method
+    "D106", # Missing docstring in public nested class 
+
+    "E501", # Line too long
+    "ERA001", # Found commented-out code
     "S101", # Use of `assert` detected
+    "S311", # Standard pseudo-random generators are not suitable for cryptographic purposes
+    "COM81", # Trailing comma missing
 ]
 
 [tool.ruff.format]
 docstring-code-format = true
 docstring-code-line-length = "dynamic"
+skip-magic-trailing-comma = true
+# preview = true
 
 
-[tool.basedpyright]
+[tool.pyright]
 reportMissingTypeStubs = false
+reportUnknownVariableType = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false

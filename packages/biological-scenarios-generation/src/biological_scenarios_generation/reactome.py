@@ -2,7 +2,7 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum, auto
-from typing import TypeAlias
+from typing import LiteralString, TypeAlias
 
 from typing_extensions import override
 
@@ -96,9 +96,7 @@ class StandardRole(StrEnum):
 class ModifierRole(StrEnum):
     ENZYME = auto()
     POSITIVE_REGULATOR = auto()
-    POSITIVE_GENE_REGULATOR = auto()
     NEGATIVE_REGULATOR = auto()
-    NEGATIVE_GENE_REGULATOR = auto()
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -108,6 +106,13 @@ class StandardRoleInformation:
 
 
 Role: TypeAlias = StandardRoleInformation | ModifierRole
+
+# POSITIVE_GENE_REGULATOR = auto()
+# NEGATIVE_GENE_REGULATOR = auto()
+
+# Role is not enough, I need to know if it's input or not, but it's not related to all reactions, just to model!
+# Interesting... I still need to save the info somewhere
+# Maybe I should go back to the drawing board for a moment
 
 
 class Event(DatabaseObject):

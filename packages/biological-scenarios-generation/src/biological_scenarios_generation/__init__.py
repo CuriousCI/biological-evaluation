@@ -615,3 +615,19 @@
 # # TODO: https://arxiv.org/abs/1703.03864
 # # TODO: https://open-box.readthedocs.io/en/latest/examples/ask_and_tell.html
 # # TODO: https://simgrid.org/doc/latest/Tutorial_MPI_Applications.html
+
+# @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+# class _ModelEntities:
+#     reactions: set[ReactionLikeEvent]
+#     compartments: set[Compartment]
+#     physical_entities: set[PhysicalEntity]
+#     input_physical_entities: set[PhysicalEntity]
+# physical_entity: PhysicalEntity
+# @override
+# def __hash__(self) -> int:
+#     return self.physical_entity.__hash__()
+# @override
+# def __eq__(self, value: object, /) -> bool:
+#     return isinstance(
+#         value, BiologicalScenarioDefinition._NetworkPhysicalEntity
+#     ) and self.physical_entity.__eq__(value.physical_entity)

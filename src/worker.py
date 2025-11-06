@@ -6,10 +6,9 @@ import os
 import buckpass
 import numpy as np
 import requests
+from example import SPACE
 from openbox.utils.config_space import Configuration
 from openbox.utils.constants import SUCCESS
-
-from example import SPACE
 
 
 def blackbox(configuration: Configuration) -> float:

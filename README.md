@@ -11,3 +11,22 @@ to find a subset of virtual patients for the situation.
 
 [ConventionalCommits](https://www.conventionalcommits.org/en/v1.0.0/#summary)
 
+# TODO: compose file only for virtual machine, so just startup the VM in a click
+# TODO: git clone in order to add repository to cluster (DONE)
+# TODO: public key for virtual machine, in order to login easily
+
+High Concentration Molecules
+
+Estrogen: A steroid hormone that freely diffuses across cell membranes
+Calcium ions (Ca²⁺): Present in high concentrations within cellular compartments, particularly important for amplifying signals
+β-Actin: A structural protein maintaining high concentrations as part of the cytoskeletal framework
+
+
+
+Low Concentration Molecules
+
+Dopamine: A neurotransmitter present in very low concentrations but highly effective in signaling
+Epidermal Growth Factor (EGF): A growth factor typically found in trace amounts due to its potent effects
+HER2: A signaling protein that requires minimal amounts for effective signaling
+
+# TODO: holy, I do need at least one common ancestor

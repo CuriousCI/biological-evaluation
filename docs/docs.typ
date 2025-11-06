@@ -1,27 +1,5 @@
 #import "logic.typ": *
-
-#show (
-    figure.where(kind: "constraint").or(figure.where(kind: "operation"))
-): it => {
-    set align(left)
-    it.body
-}
-
-#let definition(name, body) = {
-    [
-        #heading(outlined: false, numbering: none, level: 4, {
-            [Definition]
-            context counter("definition").step()
-            math.space
-            context counter("definition").display()
-            [ (]
-            text(style: "italic", name)
-            [)]
-        }) #label(name.replace(" ", "-"))
-    ]
-
-    body
-}
+#import "math.typ": *
 
 #set text(font: "New Computer Modern", lang: "en", weight: "light", 11pt)
 #set page(margin: 1.5in)
@@ -34,13 +12,12 @@
 #show link: it => underline(offset: 2pt, it)
 #show raw: set text(font: "LMMonoLt10", lang: "en", size: 11pt)
 
-#let proj-name = text(font: "LMMonoCaps10", "Bsys_eval")
 #let TODO(body) = box(fill: rgb("#f5f5f5"), inset: .75em)[
     #text(font: "LMMonoCaps10", underline[TODO]): #body
 ]
 
 #page(align(center + horizon, {
-    heading(numbering: none, outlined: false, text(size: 2em, proj-name))
+    title[AI-driven analysis of molecular pathways]
     [Ionuț Cicio]
 
     align(bottom, datetime.today().display("[day]/[month]/[year]"))
@@ -54,171 +31,72 @@
 
 #pagebreak()
 
-= #proj-name
+= Introduction
 
-== Introduction
-
-#proj-name is a tool meant to help study the likelihood of a given scenario in a
-biological system.
+// The goal of the project is to develop a tool for the analysis of virtual patients.
 
 Given a set of _target species_, a set of constraints on the _target species_
 (constraints which model a scenario that could present, for example, in a
 disease) and by taking into account all the reactions within a set _target
-    pathways_ that lead to the production, both directly and indirectly, of the
+pathways_ that lead to the production, both directly and indirectly, of the
 _target species_, the goal is to find a subset of virtual patients for the
 described scenario.
 
-#TODO[
-    find papers in literature that do similar things; what does this method add
-    compared to other approaches? (i.e. using multiple pathways by generating
-    the fixed point, ensemble of SAs etc...)
-]
-
-#TODO[case studies]
-
 #pagebreak()
 
-== Requirements
+= Problem definition
 
-The basic idea behind the software is to take the description of a scenario
-(with _target species_, _target pathways_, constraints on the _target species_,
-and the parameters $epsilon, delta in (0, 1)$ for the evalation of the
-constraints), to generate a SBML model with
-- the reactions within the _target pathways_ that, both directly and indirectly,
-    generate the _target species_
-- parameters for the reactions' speeds
-- structural constraints on the reactions' speeds (some reactions are faster
-    than others) #TODO[I still haven't figured out how to get that information
-        out of Reactome, maybe I just have to search more]
-- constraints on the quantities of the entities (for which the model needs to be
-    simulated)
-
-#box(
-    stroke: (y: .25pt),
-    inset: (y: .5em),
-    width: 100%,
-    [ *Algorithm 1*: eval],
-)
-#box(stroke: (bottom: .25pt), inset: (bottom: 1em))[
-    #indent[
-        *input*: $S_T$, set of #logic[PhysicalEntity]\; \
-        *input*: $P_T$, set of target #logic[Pathway]\; \
-        *input*: $C_T$, set of constraints on $S_T$; \
-        *input*: $epsilon, delta in (0, 1)$; \
-        *input*: seed, random seed; \
-
-        #logic[
-            scenario $<-$ biological_scenario_definition($S_T$, $P_T$, $C_T$)] \
-        #logic[(sbml_model, vp_definition, env) $<-$ yield_sbml_model(scenario)]
-        \
-
-        $V$ = $emptyset$ #logic(text(comment-color)[\/\/ set of virtual
-            patients]) \
-        *while* $not$ halt requested *do* \
-        ~ $v$ $<-$ #logic[instantiate(vp_definition)] #logic(text(
-            comment-color,
-        )[\/\/ virtual patient]) \
-        ~ *if* ( \
-        $quad quad$ $v$ satisfies structural constraints $and$ \
-        $quad quad$ #logic[APSG(sbml_model, $v$, env, seed, $epsilon$, $delta$)]
-        \
-        ~ ) *then* \
-        $quad quad$ $V <- V union { v }$; \
-
-        *return* V
-    ]
+#definition("biological network")[
+    A biological network $G$ is a triple $(S, R, E, sigma)$ s.t.
+    - $S = U union.sq X union.sq Y$ is the set of species of the biological
+        network
+        - $U$ is the set of input species
+        - $X$ is the set of other species in the network
+        - $Y$ is the set of output species
+    - $R$ is the set of reactions in the biological network
+    // - $E subset.eq S times R = E_"reactant" union.sq E_"product" union.sq E_"pos_modifier" union.sq E_"neg_modifier"$
+    - $E subset.eq S times R = E_"reactant" union.sq E_"product" union.sq E_"modifier"$
+        is a relationship between species and reactions
+    - $sigma : E_"reactant" union E_"product" -> NN^1$
 ]
 
-// $S$ $union$ constraints($S$) $union$ $C$ \
-// env $<-$ define env for model \
-// instantiate
-// generate
-// biological
-// model
-// instance
 
-// *input*: horizon?
-// EAA()
-// ~ model_instance $<-$ model + $v$ \
-// ~ env_instance $<-$ random instance of env
-// *function* fixed_point($S_T$)
-
-// ```
-// ~ test
-// ```
-
-// Algorithm
-
-// #proj-name is a tool meant to help study the plausability of a given biological system.
-// biological
-// system.
-
-
-// Different scnearios can be compared by comparing the subsets of virtual
-// patients obtained from those models.
-
-
-// #proj-name The software shall take as input the species which I want to expand (backwards reachability), it shall somehow take the as input which section of Reactome we want to confine the backwards reachability to (i.e. cutoff species / reactions?).
-// Then, it should generate a model from these reactions (how do I encode the model?)
-// == Formalities
-
-The bulk of the logic is in the #logic[yield_sbml_model()] function.
-
-#pagebreak()
-
-// The idea is to expand a portion of Reactome
-
-// #TODO[this page is far from complete, you can skip to the next one]
-
-// #definition("SBML model")[
-//     A _SBML model_ $G$ is a tuple $(S_T, S, R, E)$ s.t.
-//     - $S_T$ the set of target species
-//     - $S$ is the finite set of species s.t.
-//         - $S_T subset.eq S$
-//         - $S$ is the transitive closure of $S_I$ within the Reactome graph (to
-//             be more precise, the closure within the specified bounds, bounds yet
-//             to be defined)
-//         - $S' = S union {s_"avg" | s in S }$.
-//         - $accent(s, dot) = f(s_1, s_2, s_3, ..., s_n)$
-//     - $R$ is the finite set of reactions
-//         - $R = R_"fast" union R_"slow"$
-//     - $E$ is the set edges in the graph (where and edge goes from a species to a
-//         reaction, it also has a stoichiometry)
-//         - $E subset.eq S times R times NN^1$
-//         - $E = E_"reactant" union E_"product" union E_"modifier"$
-//     // - TODO: account for order (edges also have an "order" attribute, I have
-//     //     to check how it impacts the simulation and if it's optional)
-// ]
-
-Average quantities
-
-- $S' = S union { S_"avg" | s in S}$
-- $S' = G(S')$
-- $K: R -> RR_+^(|R|) = [10^(-6), 10^6]^(|R|)$
+#definition("constraint problem")[
+    Given a biological network $G = (S, R, E, sigma)$ let $C$ be the constraint
+    problem s.t.
+]
 
 // #pagebreak()
 
-// == Parametric problem definition (design?)
-
-- find $k$
-
-- subject to
-    - structural constraints
-        - partial order on $k$ due to
-            - fast/non fast reactions (TODO: as given by Reactome, but how?)
-            #logic[
-                $
-                    & forall r_f, r_s space.en ( r_f in R_"fast" and r_s in R_"slow" ) -> r_f > r_s
-                $
-            ]
-            - reaction modifiers (like above?)
-    - for all dynamics of environment
-        - avg concentration of species consistent to knowledge
-
-        $
-            & exists t_0 space.en forall t space.en forall s \
-            & quad (t > t_0 and s in S_"avg") -> s(t) in ["known range"]
-        $
+// Average quantities
+//
+// - $S' = S union { S_"avg" | s in S}$
+// - $S' = G(S')$
+// - $K: R -> RR_+^(|R|) = [10^(-6), 10^6]^(|R|)$
+//
+// // #pagebreak()
+//
+// // == Parametric problem definition (design?)
+//
+// - find $k$
+//
+// - subject to
+//     - structural constraints
+//         - partial order on $k$ due to
+//             - fast/non fast reactions (TODO: as given by Reactome, but how?)
+//             #logic[
+//                 $
+//                     & forall r_f, r_s space.en ( r_f in R_"fast" and r_s in R_"slow" ) -> r_f > r_s
+//                 $
+//             ]
+//             - reaction modifiers (like above?)
+//     - for all dynamics of environment
+//         - avg concentration of species consistent to knowledge
+//
+//         $
+//             & exists t_0 space.en forall t space.en forall s \
+//             & quad (t > t_0 and s in S_"avg") -> s(t) in ["known range"]
+//         $
 
 #pagebreak()
 
@@ -228,19 +106,19 @@ Average quantities
 
 // #box(stroke: .1pt, inset: 1em)[
 
-- $NN^+ = { n | n in NN and n > 0 }$
+// - $NN^+ = { n | n in NN and n > 0 }$
 
-#definition("biological graph")[
-    A _biological graph_ $G$ is a tuple $(S, R, E, F)$ s.t.
-    - $S$ is a set of species
-    - $R$ is a set of reactions
-    - $E : S times R -> NN^+$ // is the stoichiometry
-        - $E = E_"reactant" union E_"product" union E_"modifier"$
-    // - $F : E -> NN^+$ is the stoichiometry of the edges
-    // TODO: exclude modifiers
-    // TODO: do we really need NN^+ for modifiers too?
-    // TODO: also modifiers do not have the inverse order, they just act upon...
-]
+// #definition("biological graph")[
+//     A _biological graph_ $G$ is a tuple $(S, R, E, F)$ s.t.
+//     - $S$ is a set of species
+//     - $R$ is a set of reactions
+//     - $E : S times R -> NN^+$ // is the stoichiometry
+//         - $E = E_"reactant" union E_"product" union E_"modifier"$
+//     // - $F : E -> NN^+$ is the stoichiometry of the edges
+//     // TODO: exclude modifiers
+//     // TODO: do we really need NN^+ for modifiers too?
+//     // TODO: also modifiers do not have the inverse order, they just act upon...
+// ]
 
 #definition("\"produces\" relation")[
     Given a _biological graph_ $G = (S, R, E, F)$ let $~>$ be a relation s.t.
@@ -251,18 +129,18 @@ Average quantities
     $~>$ is the _"produces"_ relation
 ]
 
-#definition("model??")[
-    Given a set of target species $S_T$, a set of target pathways $P_T$ and a
-    biological graph $G = (S, E, R)$ s.t.
-    - $S_T subset.eq S$
-    A _model_ is a subgraph $G' = (S', E', R')$ s.t.
-    - $G' subset.eq G$
-    - $S' = { s | exists s_t space s in S and s_t in S_T and s scripts(~>)_G s_t}$
-    - $R' = { r | exists s_t space r in R and s_t in S_T and r scripts(~>)_G s_t}$
-    - $E' = ((s, r, n) | (s, r, n) in E and s in S' and r in R')$
-    // TODO: include target pathways somehow
-    // TODO: show that it is a biological graph?
-]
+// #definition("model??")[
+//     Given a set of target species $S_T$, a set of target pathways $P_T$ and a
+//     biological graph $G = (S, E, R)$ s.t.
+//     - $S_T subset.eq S$
+//     A _model_ is a subgraph $G' = (S', E', R')$ s.t.
+//     - $G' subset.eq G$
+//     - $S' = { s | exists s_t space s in S and s_t in S_T and s scripts(~>)_G s_t}$
+//     - $R' = { r | exists s_t space r in R and s_t in S_T and r scripts(~>)_G s_t}$
+//     - $E' = ((s, r, n) | (s, r, n) in E and s in S' and r in R')$
+//     // TODO: include target pathways somehow
+//     // TODO: show that it is a biological graph?
+// ]
 
 #definition("constraint problem on a biological model")[
     Given a model $G$ with target species $S_T$ and target pathways $P_T$ let
@@ -496,9 +374,9 @@ accept it in the description of the models.
 
 #operation(
     [from_stable_id_version],
-    args: [stable_id_version: StableIdVersion],
+    parameters: `stable_id_version: StableIdVersion`,
     type: [ReactomeDbId],
-    post: [. . .],
+    postconditions: [. . .],
 )
 
 // The #logic[StableIdVersion] type is used to identify instances of
@@ -536,13 +414,13 @@ accept it in the description of the models.
 
 The role of #logic[PhysicalEntity] in #logic[_catalyst_activity_entity_] has
 multiplicity #logic[0..\*] because _"If a #logic[PhysicalEntity] can enable
-    multiple molecular functions, a separate #logic[CatalystActivity] instance
-    is created for each"_ #ref(<data-model-glossary>, supplement: [Page 5]).
+multiple molecular functions, a separate #logic[CatalystActivity] instance is
+created for each"_ #ref(<data-model-glossary>, supplement: [Page 5]).
 
 An additional constraint is required for active units, because _"If the
-    #logic[PhysicalEntity] is a #logic[Complex] and a component of the complex
-    mediates the molecular function, that component should be identified as the
-    active unit of the #logic[CatalystActivity]."_ #ref(
+#logic[PhysicalEntity] is a #logic[Complex] and a component of the complex
+mediates the molecular function, that component should be identified as the
+active unit of the #logic[CatalystActivity]."_ #ref(
     <data-model-glossary>,
     supplement: [Page 5],
 )
@@ -620,7 +498,7 @@ There are about 34 top level pathways.
     type: `ReactionLikeEvent [0..*]`,
     // prec: ```
     // ```,
-    post: ```
+    postconditions: ```
     result =
         { reaction |
             ReactionLikeEvent(reaction) and
@@ -646,7 +524,7 @@ transitive closure of the _target entities_.
 #operation(
     [directly_produced_by],
     type: [ReactionLikeEvent [0..\*]],
-    post: ```
+    postconditions: ```
     result = { reaction |
         ReactionLikeEvent(reaction) and output(this, reaction)
     }
@@ -659,7 +537,7 @@ involved in the production of #logic[this].
 #operation(
     [produced_by],
     type: [DatabaseObject [0..\*]],
-    post: ```
+    postconditions: ```
     result =
         { this } $union$
         { reaction | directly_produced_by(this, reaction) } $union$
@@ -734,12 +612,12 @@ involved in the production of #logic[this].
 
 The following operation finds the transitive closure of the _target entities_
 specified in the scenario, by including only reactions within the _target
-    pathways_ if necessary.
+pathways_ if necessary.
 
 #operation(
     [model_objects],
     type: [DatabaseObject [1..\*]],
-    post: ```
+    postconditions: ```
     result = { object | exists entity
         PhysicalEntity(entity) and
         DatabaseObject(object) and
@@ -800,7 +678,7 @@ specified in the scenario, by including only reactions within the _target
 
 #operation(
     [is_valid],
-    post: [. . .],
+    postconditions: `. . .`,
 )
 
 == Measurement
@@ -845,9 +723,9 @@ specified in the scenario, by including only reactions within the _target
 
 #operation(
     [yield_sbml_model],
-    args: [description: BiologicalScenarioDefinition],
+    parameters: `description: BiologicalScenarioDefinition`,
     type: [(SBMLDocument, )],
-    post: [
+    postconditions: [
         TODO:
         - create necessary units (TODO: which? how?)
         - create default CompartmentDefinition
@@ -873,9 +751,9 @@ specified in the scenario, by including only reactions within the _target
 
 #operation(
     [instantiate_model],
-    args: [model: SBMLDocument],
+    parameters: `model: SBMLDocument`,
     type: [ModelInstance],
-    post: [
+    postconditions: [
         TODO:
         - add LocalParameterAssignment for undefined LocalParameters
         - add environment parameters to model (Parameter)
@@ -886,9 +764,9 @@ specified in the scenario, by including only reactions within the _target
 
 #operation(
     [simulate_model],
-    args: [instance: ModelInstance],
+    parameters: `instance: ModelInstance`,
     type: [SimulatedModelInstance],
-    post: [
+    postconditions: [
         TODO:
         - generate measurements
     ],

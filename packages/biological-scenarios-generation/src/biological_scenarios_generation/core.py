@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass, field
-from typing import Self, TypeAlias
+from typing import Self
 
 
 class IntGEZ(int):
@@ -16,6 +16,14 @@ class IntGTZ(int):
 
     def __new__(cls, value: int) -> Self:
         assert value > 0
+        return super().__new__(cls, value)
+
+
+class NormalizedReal(float):
+    """float in [0, 1]."""
+
+    def __new__(cls, value: float) -> Self:
+        assert Interval(0, 1).contains(value)
         return super().__new__(cls, value)
 
 
@@ -39,22 +47,3 @@ class Interval:
         return (not self.lower_bound or value >= self.lower_bound) and (
             not self.upper_bound or value <= self.upper_bound
         )
-
-
-class NormalizedReal(float):
-    """float in [0, 1]."""
-
-    def __new__(cls, value: int) -> Self:
-        assert 0 <= value <= 1
-        return super().__new__(cls, value)
-
-
-__PARAMETERS_SPACE_BOUND: float = 20.0
-
-
-class ValidRealParameter(float):
-    """float in [-20, 20]."""
-
-    def __new__(cls, value: int) -> Self:
-        assert -__PARAMETERS_SPACE_BOUND <= value <= __PARAMETERS_SPACE_BOUND
-        return super().__new__(cls, value)

@@ -1,3 +1,5 @@
+import itertools
+import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -18,7 +20,6 @@ from biological_scenarios_generation.model import (
 from biological_scenarios_generation.reactome import (
     Compartment,
     MathML,
-    MathMLBool,
     ModifierRole,
     Pathway,
     PhysicalEntity,
@@ -129,8 +130,8 @@ class BiologicalScenarioDefinition:
     """Definition of a target scenario to expand for simulations."""
 
     target_physical_entities: set[PhysicalEntity]
-    target_pathways: set[Pathway] | None
-    constraints: list[MathMLBool]
+    target_pathways: set[Pathway]
+    constraints: set[tuple[PhysicalEntity, PhysicalEntity]]
     max_depth: IntGTZ | None = field(default=None)
     excluded_physical_entities: set[PhysicalEntity] = field(default_factory=set)
     default_kinetic_law: KineticLaw = field(
@@ -142,17 +143,25 @@ class BiologicalScenarioDefinition:
 
     def __post_init__(self) -> None:
         assert self.target_physical_entities
-        assert self.target_pathways is None or len(self.target_pathways) > 0
 
-    def __model_objects(
-        self, driver: neo4j.Driver
-    ) -> set[PhysicalEntity | ReactionLikeEvent | Compartment]:
+    @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
+    class _BiologicalNetwork:
+        input_physical_entities_id: set[ReactomeDbId]
+        network: set[PhysicalEntity | ReactionLikeEvent | Compartment]
+
+        def __post_init__(self) -> None:
+            assert self.network
+            assert self.input_physical_entities_id
+
+    def __biological_network(
+        self, neo4j_driver: neo4j.Driver
+    ) -> _BiologicalNetwork:
         reaction_node: LiteralString = "reactionLikeEvent"
         physical_entity_node: LiteralString = "physicalEntity"
         compartment_node: LiteralString = "compartment"
         reference: LiteralString = "reference"
 
-        query_transitive_closure: LiteralString = """
+        query_reactions_subset_of_interest: LiteralString = """
             MATCH (targetPathway:Pathway)
             WHERE targetPathway.dbId IN $target_pathways
             CALL
@@ -164,7 +173,7 @@ class BiologicalScenarioDefinition:
             WITH COLLECT(DISTINCT node) AS reactionsSubsetOfInterest
         """
 
-        query_reaction_like_events_in_transitive_closure: LiteralString = f"""
+        query_reactions_of_interest_in_transitive_closure_of_scenario: LiteralString = f"""
             MATCH (targetPhysicalEntity:PhysicalEntity)
             WHERE targetPhysicalEntity.dbId IN $target_physical_entities
             CALL
@@ -181,9 +190,7 @@ class BiologicalScenarioDefinition:
             WHERE {reaction_node} IN reactionsSubsetOfInterest
         """
 
-        # TODO: compute compartments at the end, ids at the end, and match type
-
-        query_inputs: LiteralString = f"""
+        query_reaction_inputs: LiteralString = f"""
             CALL {{
                 WITH {reaction_node}
                 MATCH ({reaction_node})-[relationship:input]->({physical_entity_node})
@@ -196,7 +203,7 @@ class BiologicalScenarioDefinition:
             }}
         """
 
-        query_outputs: LiteralString = f"""
+        query_reaction_outputs: LiteralString = f"""
             CALL {{
                 WITH {reaction_node}
                 MATCH ({reaction_node})-[relationship:output]->({physical_entity_node})
@@ -209,7 +216,7 @@ class BiologicalScenarioDefinition:
             }}
         """
 
-        query_enzymes: LiteralString = f"""
+        query_reaction_enzymes: LiteralString = f"""
             CALL {{
                 WITH {reaction_node}
                 MATCH ({reaction_node})-->(:CatalystActivity)-[:physicalEntity]->({physical_entity_node})
@@ -221,7 +228,7 @@ class BiologicalScenarioDefinition:
             }}
         """
 
-        def query_regulators(
+        def query_reaction_regulators(
             label: LiteralString, role: LiteralString, collection: LiteralString
         ) -> LiteralString:
             return f"""
@@ -243,7 +250,19 @@ class BiologicalScenarioDefinition:
             }}
         """
 
-        query_is_reaction_reversible = f"""
+        query_reaction_inputs_which_are_network_inputs: LiteralString = f"""
+            CALL {{
+                WITH {reaction_node}, reactionsSubsetOfInterest
+                MATCH ({reaction_node})-[:input]->({physical_entity_node}:PhysicalEntity)
+                WHERE NOT EXISTS {{
+                    MATCH ({physical_entity_node})<-[:output]-(externalReactionLikeEvent:ReactionLikeEvent)
+                    WHERE externalReactionLikeEvent IN reactionsSubsetOfInterest
+                }}
+                RETURN COLLECT({physical_entity_node}.dbId) AS reactionNetworkInputs
+            }}
+        """
+
+        query_is_reaction_reversible: LiteralString = f"""
             CALL {{
                 WITH {reaction_node}
                 OPTIONAL MATCH ({reaction_node})-[:reverseReaction]->(reverseReactionLikeEvent)
@@ -251,7 +270,7 @@ class BiologicalScenarioDefinition:
             }}
         """
 
-        query_expand_physical_entities_with_compartments: LiteralString = f"""
+        query_expand_reaction_physical_entities_information: LiteralString = f"""
             WITH *, inputs + outputs + enzymes + positiveRegulators + negativeRegulators AS references
             CALL {{
                 WITH references
@@ -262,13 +281,15 @@ class BiologicalScenarioDefinition:
                     MATCH ({physical_entity_node})-[:compartment]-({
             compartment_node
         }:Compartment)
-                    RETURN COLLECT({compartment_node}.dbId) as compartments
+                    RETURN COLLECT({
+            compartment_node
+        }.dbId) as physicalEntityCompartments
                 }}
                 RETURN COLLECT({{
                     id: {reference}.physicalEntity.dbId,
                     role: {reference}.role,
                     stoichiometry: {reference}.stoichiometry,
-                    compartments: compartments
+                    compartments: physicalEntityCompartments
                 }}) as physicalEntities
             }}
         """
@@ -280,24 +301,20 @@ class BiologicalScenarioDefinition:
         )
 
         query: LiteralString = f"""
-        {query_transitive_closure}
+        {query_reactions_subset_of_interest}
+        {query_reactions_of_interest_in_transitive_closure_of_scenario}
+        {query_reaction_inputs}
+        {query_reaction_outputs}
+        {query_reaction_enzymes}
         {
-            query_reaction_like_events_in_transitive_closure
-            if self.target_pathways
-            else ""
-        }
-        {query_inputs}
-        {query_outputs}
-        {query_enzymes}
-        {
-            query_regulators(
+            query_reaction_regulators(
                 label="PositiveRegulation",
                 role="positive_regulator",
                 collection="positiveRegulators",
             )
         }
         {
-            query_regulators(
+            query_reaction_regulators(
                 label="NegativeRegulation",
                 role="negative_regulator",
                 collection="negativeRegulators",
@@ -305,16 +322,19 @@ class BiologicalScenarioDefinition:
         }
         {query_is_reaction_reversible}
         {query_reaction_compartments}
-        {query_expand_physical_entities_with_compartments}
-        RETURN COLLECT({{
-            id: {reaction_node}.dbId,
-            physical_entities: physicalEntities,
-            reverse_reaction: reverseReactionLikeEvent,
-            compartments: compartments
-        }}) AS reactions;
+        {query_expand_reaction_physical_entities_information}
+        {query_reaction_inputs_which_are_network_inputs}
+        RETURN
+            COLLECT({{
+                id: {reaction_node}.dbId,
+                physical_entities: physicalEntities,
+                reverse_reaction: reverseReactionLikeEvent,
+                compartments: compartments
+            }}) AS reactions,
+            COLLECT(reactionNetworkInputs) AS networkInputs;
         """
 
-        records, _, _ = driver.execute_query(
+        records, _, _ = neo4j_driver.execute_query(
             query,
             max_level=int(self.max_depth) if self.max_depth else -1,
             target_pathways=list(map(int, self.target_pathways))
@@ -334,6 +354,9 @@ class BiologicalScenarioDefinition:
                 case _:
                     return ModifierRole(obj["role"])
 
+        input_physical_entities_id = set[ReactomeDbId](
+            map(ReactomeDbId, itertools.chain(*records[0]["networkInputs"]))
+        )
         rows: list[dict[str, Any]] = records[0]["reactions"]
         reaction_like_events: set[ReactionLikeEvent] = {
             ReactionLikeEvent(
@@ -369,10 +392,12 @@ class BiologicalScenarioDefinition:
             map(attrgetter("compartments"), physical_entities),
             set[Compartment](),
         )
+        return BiologicalScenarioDefinition._BiologicalNetwork(
+            input_physical_entities_id=input_physical_entities_id,
+            network=physical_entities | reaction_like_events | compartments,
+        )
 
-        return physical_entities | reaction_like_events | compartments
-
-    def generate_model(self, driver: neo4j.Driver) -> Model:
+    def generate_biological_model(self, driver: neo4j.Driver) -> Model:
         """Produce a model by enriching the described BiologicalScenarioDefinition with external databases."""
         sbml_document: libsbml.SBMLDocument = libsbml.SBMLDocument(3, 1)
 
@@ -391,9 +416,13 @@ class BiologicalScenarioDefinition:
         default_compartment.setUnits("litre")
 
         virtual_patient_details = set[SId]()
-        env_physical_entities = set[PhysicalEntity]()
+        environment_physical_entities = set[PhysicalEntity]()
 
-        for obj in self.__model_objects(driver):
+        biological_network: BiologicalScenarioDefinition._BiologicalNetwork = (
+            self.__biological_network(driver)
+        )
+
+        for obj in biological_network.network:
             match obj:
                 case Compartment():
                     compartment: libsbml.Compartment = (
@@ -417,7 +446,27 @@ class BiologicalScenarioDefinition:
                     species.setSubstanceUnits("mole")
                     species.setBoundaryCondition(False)
                     species.setHasOnlySubstanceUnits(False)
-                    env_physical_entities.add(obj)
+                    species.setInitialAmount(random.uniform(0, 1))
+                    environment_physical_entities.add(obj)
+                    if obj.id in biological_network.input_physical_entities_id:
+                        input_reaction: libsbml.Reaction = (
+                            sbml_model.createReaction()
+                        )
+                        input_reaction.setId(repr(obj))
+                        input_reaction.setReversible(False)
+                        input_species_ref: libsbml.SpeciesReference = (
+                            sbml_model.createProduct()
+                        )
+                        input_species_ref.setSpecies(repr(obj))
+                        input_species_ref.setConstant(False)
+                        input_species_ref.setStoichiometry(1)
+                        input_kinetic_law: libsbml.KineticLaw = (
+                            input_reaction.createKineticLaw()
+                        )
+                        input_kinetic_law.setMath(
+                            libsbml.parseL3Formula(repr(obj))
+                        )
+
                 case ReactionLikeEvent():
                     reaction: libsbml.Reaction = sbml_model.createReaction()
                     reaction.setId(repr(obj))
@@ -429,9 +478,9 @@ class BiologicalScenarioDefinition:
                     )
                     reaction.setCompartment(reaction_compartment)
 
-                    for physical_entity, information in obj.entities():
+                    for physical_entity, role_information in obj.entities():
                         species_ref: libsbml.SpeciesReference
-                        match information.role:
+                        match role_information.role:
                             case StandardRole.INPUT:
                                 species_ref = sbml_model.createReactant()
                             case StandardRole.OUTPUT:
@@ -440,7 +489,7 @@ class BiologicalScenarioDefinition:
                         species_ref.setSpecies(repr(physical_entity))
                         species_ref.setConstant(False)
                         species_ref.setStoichiometry(
-                            int(information.stoichiometry)
+                            int(role_information.stoichiometry)
                         )
 
                     kinetic_law_procedure = self.kinetic_laws.get(
@@ -456,8 +505,14 @@ class BiologicalScenarioDefinition:
                     )
                     kinetic_law.setMath(libsbml.parseL3Formula(l3_formula))
 
-        return (
-            sbml_document,
-            VirtualPatientGenerator(virtual_patient_details),
-            EnvironmentGenerator(env_physical_entities),
+        # TODO: annotations for constraint
+        return Model(
+            document=sbml_document,
+            virtual_patient_generator=VirtualPatientGenerator(
+                virtual_patient_details
+            ),
+            environment_generator=EnvironmentGenerator(
+                environment_physical_entities
+            ),
+            constraints=set(),
         )

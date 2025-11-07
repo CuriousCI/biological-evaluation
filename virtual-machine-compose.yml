@@ -42,7 +42,6 @@ services:
     depends_on:
       - postgres
       - open-box
-      - slurmctld
     networks:
       - virtual_machine
 

@@ -21,7 +21,7 @@ class Uniroma1Submitter(Submitter[SlurmJobId, OpenBoxTaskId]):
                 "-i",
                 "~/.ssh/Uniroma1Cluster",
                 f"{os.getenv('CLUSTER_USER')}{os.getenv('FRONTEND_ADDRESS')}",
-                f'""sbatch {os.getenv("CLUSTER_PROJECT_PATH")}/src/job.sh {args}""',
+                f'"ssh submitter \\"sbatch {os.getenv("CLUSTER_PROJECT_PATH")}/src/job.sh {args}\\""',
             ],
             check=False,
             capture_output=True,

@@ -2,14 +2,13 @@
 
 import subprocess
 
-from buckpass.core import Submitter
-from buckpass.core.util import OpenBoxTaskId, SlurmJobId
 from typing_extensions import override
 
+from buckpass.core import Submitter
+from buckpass.core.util import OpenBoxTaskId, SlurmJobId
 
-class SshSubmitter(
-    Submitter[SlurmJobId, OpenBoxTaskId],
-):
+
+class SshSubmitter(Submitter[SlurmJobId, OpenBoxTaskId]):
     """sbatch via ssh."""
 
     @override
@@ -31,3 +30,6 @@ class SshSubmitter(
 
         # `sbatch` prints "Submitted batch job 781422" to stdout
         return "".join(filter(str.isnumeric, stdout))
+
+
+# ssh -i ~/.ssh/Uniroma1Cluster.pem cicio_2048752@151.100.174.45 "echo 'hello'

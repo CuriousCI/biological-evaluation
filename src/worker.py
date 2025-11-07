@@ -12,10 +12,10 @@ from openbox.utils.constants import SUCCESS
 from blackbox import blackbox
 
 OPENBOX_URL: buckpass.openbox_api.URL = buckpass.openbox_api.URL(
-    host=os.getenv("OPENBOX_URL") or "", port=8000
+    host=os.getenv("VIRTUAL_MACHINE_ADDRESS") or "", port=8000
 )
 
-ORCHESTRATOR_URL = f"http://{os.getenv('ORCHESTRATOR_URL')}:8080/"
+ORCHESTRATOR_URL = f"http://{os.getenv('VIRTUAL_MACHINE_ADDRESS')}:8080/"
 
 
 def main() -> None:

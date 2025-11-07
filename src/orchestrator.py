@@ -35,10 +35,10 @@ def main() -> None:
 
     remote_advisor: RemoteAdvisor = RemoteAdvisor(
         config_space=_space,
-        server_ip=os.getenv("OPENBOX_URL"),
+        server_ip="localhost",
         port=8000,
         email="test@test.test",
-        password="testtest",
+        password=os.getenv("OPENBOX_PASSWORD"),
         task_name=filename,
         num_objectives=1,
         num_constraints=0,
@@ -51,7 +51,7 @@ def main() -> None:
     _ = BurstPolicy(
         args=buckpass.openbox_api.TaskId(remote_advisor.task_id),
         batch_size=buckpass.IntGEZ(100),
-        submitter=buckpass.SshSubmitter(),
+        submitter=buckpass.Uniroma1Submitter(),
     )
 
 

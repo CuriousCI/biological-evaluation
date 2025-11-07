@@ -40,7 +40,7 @@ services:
       - cluster
 
   mongo:
-    image: mongo 
+    image: mongo:4.4
     environment:
       - MONGO_INITDB_ROOT_USERNAME=openbox
       - MONGO_INITDB_ROOT_PASSWORD=openbox

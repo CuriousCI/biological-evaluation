@@ -11,8 +11,8 @@ COPY --from=docker.io/astral/uv:latest /uv /uvx /bin/
 
 RUN git clone --depth=1 https://github.com/PKU-DAIR/open-box.git \
     && cd open-box \
-    && echo "3.9" > .python-version \
-    && echo "django==2.2.17\npymongo<4.0\nbson\npyjwt" > requirements/service.txt \
+    && echo "3.10" > .python-version \
+    && echo "django==2.2.17\npymongo==3.11.2\nbson\npyjwt" > requirements/service.txt \
     && sed -i 's/config_advisor.save_history()/# config_advisor.save_history()/' openbox/artifact/bo_advice/views.py \
     && uv add --dev setuptools wheel \
     && uv sync --extra service \

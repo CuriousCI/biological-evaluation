@@ -8,14 +8,14 @@ from typing_extensions import override
 TaskId = str
 
 
-__TCP_MAX_PORT = 65535
+TCP_MAX_PORT = 65535
 
 
 class URL:
     __url: str
 
     def __init__(self, host: str, port: int) -> None:
-        assert 0 <= port <= __TCP_MAX_PORT
+        assert 0 <= port <= TCP_MAX_PORT
         assert re.match("", host)
 
         self.__url = f"http://{host}:{port}/bo_advice/"

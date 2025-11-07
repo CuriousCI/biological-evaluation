@@ -2,32 +2,43 @@ import argparse
 import datetime
 import json
 import os
+from pathlib import Path
 
 import buckpass
-import numpy as np
+import libsbml
 import requests
-from example import SPACE
-from openbox.utils.config_space import Configuration
+from biological_scenarios_generation.model import load_biological_model
+from openbox import space
 from openbox.utils.constants import SUCCESS
 
-
-def blackbox(configuration: Configuration) -> float:
-    x = np.array(list(configuration.get_dictionary().values()))
-    return float(x[0] * x[1] + x[1] ** 2 - x[0] ** 2 * x[1])
-
+from blackbox import blackbox
 
 OPENBOX_URL: buckpass.openbox_api.URL = buckpass.openbox_api.URL(
-    host="open-box", port=8000
+    host=os.getenv("OPENBOX_URL") or "", port=8000
 )
 
-ORCHESTRATOR_URL = "http://orchestrator:8080/"
+ORCHESTRATOR_URL = f"http://{os.getenv('ORCHESTRATOR_URL')}:8080/"
 
 
 def main() -> None:
     argument_parser: argparse.ArgumentParser = argparse.ArgumentParser()
-    _ = argument_parser.add_argument("task_id")
-    task_id: buckpass.util.OpenBoxTaskId = buckpass.util.OpenBoxTaskId(
-        argument_parser.parse_args().task_id
+    _ = argument_parser.add_argument("filename")
+    filename: str = str(argument_parser.parse_args().filename)
+
+    path = Path(filename)
+    assert path.exists()
+    assert path.is_file()
+
+    task_id: buckpass.util.OpenBoxTaskId = buckpass.util.OpenBoxTaskId(filename)
+
+    document: libsbml.SBMLDocument = libsbml.readSBML(filename)
+    biological_model = load_biological_model(document)
+    _space: space.Space = space.Space()
+    _space.add_variables(
+        [
+            space.Real(kinetic_constant, -20.0, 20.0, 0)
+            for kinetic_constant in biological_model.virtual_patient_generator.kinetic_constants
+        ]
     )
 
     _ = requests.post(
@@ -38,14 +49,20 @@ def main() -> None:
         timeout=100,
     )
 
-    suggestion = buckpass.openbox_api.get_suggestion(
+    suggestion: dict[str, float] = buckpass.openbox_api.get_suggestion(
         url=OPENBOX_URL, task_id=task_id
     )
 
-    configuration = Configuration(SPACE, suggestion)
-
     blackbox_start_time = datetime.datetime.now(tz=datetime.UTC)
-    observation = blackbox(configuration)
+    observation = blackbox(
+        document=biological_model.document,
+        virtual_patient={
+            kinetic_constant: 10**value
+            for kinetic_constant, value in suggestion.items()
+        },
+        environment=biological_model.environment_generator(),
+        constraints=set(),
+    )
     blackbox_end_time = datetime.datetime.now(tz=datetime.UTC)
 
     trial_info = {
@@ -78,3 +95,26 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         print(e, flush=True)
+
+
+# from example import SPACE
+# from openbox.utils.config_space import Configuration
+# from openbox.utils.constants import SUCCESS
+
+
+# def blackbox(configuration: Configuration) -> float:
+#     x = np.array(list(configuration.get_dictionary().values()))
+#     return float(x[0] * x[1] + x[1] ** 2 - x[0] ** 2 * x[1])
+
+# virtual
+# machine
+# compose
+
+# configuration = Configuration(_space, suggestion)
+# SPACE: space.Space = space.Space()
+# SPACE.add_variables(
+#     [
+#         space.Real("x1", -2.5, 2.5, 0),
+#         space.Real("x2", -2.4, 2.7, 0),
+#     ],
+# )

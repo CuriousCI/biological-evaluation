@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import libsbml
 import neo4j
@@ -55,8 +54,12 @@ def main() -> None:
         with Path(filename).open("w") as file:
             _ = file.write(libsbml.writeSBMLToString(biological_model.document))
     except:
-        sbml_document: libsbml.SBMLDocument = libsbml.readSBML(filename)
-        biological_model = load_biological_model(sbml_document)
+        path = Path(filename)
+        assert path.exists()
+        assert path.is_file()
+
+        document: libsbml.SBMLDocument = libsbml.readSBML(filename)
+        biological_model = load_biological_model(document)
 
     objective_function_value = blackbox(
         document=biological_model.document,
@@ -70,24 +73,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-    # document: libsbml.SBMLDocument
-    # virtual_patient_generator: VirtualPatientGenerator
-    # environment_generator: EnvironmentGenerator
-    # document: libsbml.SBMLDocument
-    # virtual_patient_generator: VirtualPatientGenerator
-    # environment_generator: EnvironmentGenerator
-    # print(virtual_patient)
-    # print(environment)
-    # print(len(virtual_patient_generator.kinetic_constants))
-    # print(len(environment_generator.physical_entities))
-
-
-# path = Path(filename)
-# if path.exists() and path.is_file():
-#     sbml_document: libsbml.SBMLDocument = libsbml.readSBML(filename)
-#     (document, virtual_patient_generator, environment_generator) = (
-#         load_model_from_document(sbml_document)
-#     )
-#
-#     sys.exit()

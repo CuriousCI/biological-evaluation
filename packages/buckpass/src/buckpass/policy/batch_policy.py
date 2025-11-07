@@ -18,8 +18,7 @@ Args = TypeVar("Args")
 
 
 class BatchPolicy(
-    Policy[tuple[WorkerId, WorkerEvent]],
-    Generic[WorkerId, Args],
+    Policy[tuple[WorkerId, WorkerEvent]], Generic[WorkerId, Args]
 ):
     __args: Args
     __max_runs: IntGTZ

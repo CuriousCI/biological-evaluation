@@ -32,10 +32,8 @@ class URL:
 def get_suggestion(url: URL, task_id: TaskId):
     response: dict[str, Any] = json.loads(
         requests.post(
-            f"{url}get_suggestion/",
-            data={"task_id": task_id},
-            timeout=100,
-        ).text,
+            f"{url}get_suggestion/", data={"task_id": task_id}, timeout=100
+        ).text
     )
 
     assert response["code"]
@@ -63,7 +61,7 @@ def update_observation(
                 "trial_info": json.dumps(trial_info),
             },
             timeout=100,
-        ).text,
+        ).text
     )
 
     assert response["code"]

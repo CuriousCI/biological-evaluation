@@ -10,6 +10,14 @@ class IntGEZ(int):
         return super().__new__(cls, value)
 
 
+class IntGTZ(int):
+    """Int with value x >= 0."""
+
+    def __new__(cls, value: int) -> "IntGTZ":
+        assert value > 0
+        return super().__new__(cls, value)
+
+
 Event = TypeVar("Event")
 
 

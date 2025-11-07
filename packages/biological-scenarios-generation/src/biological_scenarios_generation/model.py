@@ -41,23 +41,18 @@ class EnvironmentGenerator:
         }
 
 
-# Model: TypeAlias = tuple[
-#     libsbml.SBMLDocument, VirtualPatientGenerator, EnvironmentGenerator
-# ]
-
-
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
-class Model:
+class BiologicalModel:
     document: libsbml.SBMLDocument
     virtual_patient_generator: VirtualPatientGenerator
     environment_generator: EnvironmentGenerator
     constraints: set[tuple[PhysicalEntity, PhysicalEntity]]
 
 
-def load_biological_model(document: libsbml.SBMLDocument) -> Model:
+def load_biological_model(document: libsbml.SBMLDocument) -> BiologicalModel:
     sbml_model: libsbml.Model = document.getModel()
 
-    return Model(
+    return BiologicalModel(
         document=document,
         virtual_patient_generator=VirtualPatientGenerator(
             {

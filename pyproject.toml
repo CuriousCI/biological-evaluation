@@ -5,11 +5,12 @@ description = "Plausability of biological scenarios through virtual patients"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "libroadrunner>=2.8.0",
-    "neo4j>=5.28.2",
-    "python-libsbml>=5.20.5",
     "buckpass",
     "biological-scenarios-generation",
+    "neo4j>=5.28.2",
+    "python-libsbml>=5.20.5",
+    "libroadrunner>=2.8.0",
+    "openbox>=0.8.4",
 ]
 
 [dependency-groups]
@@ -20,6 +21,8 @@ dev = [
     "sphinxawesome-theme>=5.3.2",
 ]
 
+[tool.uv]
+override-dependencies = ["numpy==2.3.4"]
 
 [tool.uv.sources]
 buckpass = { workspace = true }

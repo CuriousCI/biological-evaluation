@@ -17,10 +17,7 @@ WorkerId = TypeVar("WorkerId")
 Args = TypeVar("Args")
 
 
-class BurstPolicy(
-    Policy[None],
-    Generic[Args, WorkerId],
-):
+class BurstPolicy(Policy[None], Generic[Args, WorkerId]):
     __args: Args
     __workers_batch_size: IntGEZ
     __submitter: Submitter[WorkerId, Args]

@@ -13,7 +13,7 @@ import neo4j
 from biological_scenarios_generation.core import IntGTZ
 from biological_scenarios_generation.model import (
     EnvironmentGenerator,
-    Model,
+    BiologicalModel,
     SId,
     VirtualPatientGenerator,
 )
@@ -397,7 +397,9 @@ class BiologicalScenarioDefinition:
             network=physical_entities | reaction_like_events | compartments,
         )
 
-    def generate_biological_model(self, driver: neo4j.Driver) -> Model:
+    def generate_biological_model(
+        self, driver: neo4j.Driver
+    ) -> BiologicalModel:
         """Produce a model by enriching the described BiologicalScenarioDefinition with external databases."""
         sbml_document: libsbml.SBMLDocument = libsbml.SBMLDocument(3, 1)
 
@@ -506,7 +508,7 @@ class BiologicalScenarioDefinition:
                     kinetic_law.setMath(libsbml.parseL3Formula(l3_formula))
 
         # TODO: annotations for constraint
-        return Model(
+        return BiologicalModel(
             document=sbml_document,
             virtual_patient_generator=VirtualPatientGenerator(
                 virtual_patient_details

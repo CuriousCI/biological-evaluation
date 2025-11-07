@@ -1,12 +1,10 @@
 import argparse
 import datetime
-import json
 import os
 from pathlib import Path
 
 import buckpass
 import libsbml
-import requests
 from biological_scenarios_generation.model import load_biological_model
 from openbox import space
 from openbox.utils.constants import SUCCESS
@@ -41,14 +39,6 @@ def main() -> None:
         ]
     )
 
-    _ = requests.post(
-        ORCHESTRATOR_URL,
-        data=json.dumps(
-            {"worker_id": os.getenv("SLURM_JOB_ID"), "event": "START"}
-        ),
-        timeout=100,
-    )
-
     suggestion: dict[str, float] = buckpass.openbox_api.get_suggestion(
         url=OPENBOX_URL, task_id=task_id
     )
@@ -81,20 +71,31 @@ def main() -> None:
         trial_state=SUCCESS,
     )
 
-    _ = requests.post(
-        ORCHESTRATOR_URL,
-        data=json.dumps(
-            {"worker_id": os.getenv("SLURM_JOB_ID"), "event": "END"}
-        ),
-        timeout=100,
-    )
-
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
         print(e, flush=True)
+
+
+# import json
+# import requests
+# _ = requests.post(
+#     ORCHESTRATOR_URL,
+#     data=json.dumps(
+#         {"worker_id": os.getenv("SLURM_JOB_ID"), "event": "START"}
+#     ),
+#     timeout=100,
+# )
+
+# _ = requests.post(
+#     ORCHESTRATOR_URL,
+#     data=json.dumps(
+#         {"worker_id": os.getenv("SLURM_JOB_ID"), "event": "END"}
+#     ),
+#     timeout=100,
+# )
 
 
 # from example import SPACE

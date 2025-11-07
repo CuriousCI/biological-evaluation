@@ -3,14 +3,13 @@
 import os
 import subprocess
 
-from buckpass.core import Submitter
-from buckpass.core.util import OpenBoxTaskId, SlurmJobId
 from typing_extensions import override
 
+from buckpass.core import Submitter
+from buckpass.core.util import OpenBoxTaskId, SlurmJobId
 
-class SbatchSubmitter(
-    Submitter[SlurmJobId, OpenBoxTaskId],
-):
+
+class SbatchSubmitter(Submitter[SlurmJobId, OpenBoxTaskId]):
     """sbatch."""
 
     @override

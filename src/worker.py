@@ -20,16 +20,15 @@ ORCHESTRATOR_URL = f"http://{os.getenv('VIRTUAL_MACHINE_ADDRESS')}:8080/"
 
 def main() -> None:
     argument_parser: argparse.ArgumentParser = argparse.ArgumentParser()
-    _ = argument_parser.add_argument("filename")
-    filename: str = str(argument_parser.parse_args().filename)
+    _ = argument_parser.add_argument("-t", "--task", required=True)
+    _ = argument_parser.add_argument("-f", "--file", required=True)
+    args = argument_parser.parse_args()
 
-    path = Path(filename)
+    path = Path(args.file)
     assert path.exists()
     assert path.is_file()
 
-    task_id: buckpass.util.OpenBoxTaskId = buckpass.util.OpenBoxTaskId(filename)
-
-    document: libsbml.SBMLDocument = libsbml.readSBML(filename)
+    document: libsbml.SBMLDocument = libsbml.readSBML(args.file)
     biological_model = load_biological_model(document)
     _space: space.Space = space.Space()
     _space.add_variables(
@@ -40,7 +39,7 @@ def main() -> None:
     )
 
     suggestion: dict[str, float] = buckpass.openbox_api.get_suggestion(
-        url=OPENBOX_URL, task_id=task_id
+        url=OPENBOX_URL, task_id=buckpass.util.OpenBoxTaskId(args.task)
     )
 
     blackbox_start_time = datetime.datetime.now(tz=datetime.UTC)

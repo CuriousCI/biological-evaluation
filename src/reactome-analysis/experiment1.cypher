@@ -386,3 +386,7 @@ WHERE
     170676
   ]
 RETURN n;
+
+MATCH (n {dbId: 202124}), (m {dbId: 30389})
+CALL apoc.algo.dijkstra(n, m, "input|output", "", 1) YIELD path, weight
+RETURN path

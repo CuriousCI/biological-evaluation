@@ -12,8 +12,8 @@ import neo4j
 
 from biological_scenarios_generation.core import IntGTZ
 from biological_scenarios_generation.model import (
-    EnvironmentGenerator,
     BiologicalModel,
+    EnvironmentGenerator,
     SId,
     VirtualPatientGenerator,
 )

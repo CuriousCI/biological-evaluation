@@ -31,14 +31,14 @@ def main() -> None:
 
     biological_scenario_definition: BiologicalScenarioDefinition = (
         BiologicalScenarioDefinition(
-            target_physical_entities={nitric_oxide, cyclic_amp},
-            target_pathways={signal_transduction},
-            excluded_physical_entities={
+            physical_entities={nitric_oxide, cyclic_amp},
+            pathways={signal_transduction},
+            ignored_physical_entities={
                 adenosine_triphsphate,
                 adenosine_diphsphate,
             },
             constraints={(nitric_oxide, cyclic_amp)},
-            max_depth=IntGTZ(2),
+            max_depth=IntGTZ(3),
         )
     )
 
@@ -53,7 +53,9 @@ def main() -> None:
 
         with Path(filename).open("w") as file:
             _ = file.write(libsbml.writeSBMLToString(biological_model.document))
-    except:
+    except Exception as e:
+        print(e)
+        exit()
         path = Path(filename)
         assert path.exists()
         assert path.is_file()

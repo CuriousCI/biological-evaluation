@@ -1,7 +1,6 @@
 import argparse
 import datetime
 import os
-from pathlib import Path
 
 import buckpass
 import libsbml
@@ -24,11 +23,9 @@ def main() -> None:
     _ = argument_parser.add_argument("-f", "--file", required=True)
     args = argument_parser.parse_args()
 
-    path = Path(args.file)
-    assert path.exists()
-    assert path.is_file()
-
-    document: libsbml.SBMLDocument = libsbml.readSBML(args.file)
+    document: libsbml.SBMLDocument = libsbml.readSBML(
+        f"{os.getenv('CLUSTER_PROJECT_PATH')}{args.file.strip()}"
+    )
     biological_model = load_biological_model(document)
     _space: space.Space = space.Space()
     _space.add_variables(
@@ -62,7 +59,7 @@ def main() -> None:
 
     buckpass.openbox_api.update_observation(
         url=OPENBOX_URL,
-        task_id=task_id,
+        task_id=args.task.strip(),
         config_dict=suggestion,
         objectives=[observation],
         constraints=[],

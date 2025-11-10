@@ -3,7 +3,7 @@ from pathlib import Path
 import libsbml
 import neo4j
 from biological_scenarios_generation.core import IntGTZ
-from biological_scenarios_generation.model import load_biological_model
+from biological_scenarios_generation.model import BiologicalModel
 from biological_scenarios_generation.reactome import (
     Pathway,
     PhysicalEntity,
@@ -21,8 +21,6 @@ REACTOME_DATABASE = "graph.db"
 
 
 def main() -> None:
-    filename: str = "experiment1.sbml"
-
     signal_transduction = Pathway(ReactomeDbId(162582))
     nitric_oxide = PhysicalEntity(ReactomeDbId(202124))
     cyclic_amp = PhysicalEntity(ReactomeDbId(30389))
@@ -38,9 +36,12 @@ def main() -> None:
                 adenosine_diphsphate,
             },
             constraints={(nitric_oxide, cyclic_amp)},
-            max_depth=IntGTZ(3),
+            max_depth=IntGTZ(2),
         )
     )
+
+    # TODO: python, reflection, get current filename, strip ".py", add ".sbml"
+    filename: str = "experiment1.sbml"
 
     try:
         with neo4j.GraphDatabase.driver(
@@ -54,14 +55,14 @@ def main() -> None:
         with Path(filename).open("w") as file:
             _ = file.write(libsbml.writeSBMLToString(biological_model.document))
     except Exception as e:
-        print(e)
-        exit()
         path = Path(filename)
         assert path.exists()
         assert path.is_file()
 
         document: libsbml.SBMLDocument = libsbml.readSBML(filename)
-        biological_model = load_biological_model(document)
+        biological_model: BiologicalModel = BiologicalModel.load(document)
+
+    # print(biological_model.virtual_patient_generator.kinetic_constants)
 
     objective_function_value = blackbox(
         document=biological_model.document,
@@ -71,6 +72,11 @@ def main() -> None:
     )
 
     print(objective_function_value)
+
+    # TODO: store values in log
+    # exit()
+    # print(e)
+    # exit()
 
 
 if __name__ == "__main__":

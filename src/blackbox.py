@@ -29,9 +29,6 @@ def blackbox(
     for k, value in virtual_patient.items():
         rr[k] = value
 
-    # for k, value in environment.items():
-    #     rr[k] = value
-
     result: np.ndarray = rr.simulate(start=0, end=1, points=1000)
 
     transitory_penalty: float = 0.0
@@ -58,7 +55,7 @@ def blackbox(
             elif concentration < 0:
                 normalization_penalty += -concentration
 
-    return normalization_penalty + transitory_penalty
+    return float(normalization_penalty + transitory_penalty)
 
     # print(rr.timeCourseSelections)
 

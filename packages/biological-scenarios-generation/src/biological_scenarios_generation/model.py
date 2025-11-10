@@ -48,23 +48,23 @@ class BiologicalModel:
     environment_generator: EnvironmentGenerator
     constraints: set[tuple[PhysicalEntity, PhysicalEntity]]
 
+    @staticmethod
+    def load(document: libsbml.SBMLDocument) -> "BiologicalModel":
+        sbml_model: libsbml.Model = document.getModel()
 
-def load_biological_model(document: libsbml.SBMLDocument) -> BiologicalModel:
-    sbml_model: libsbml.Model = document.getModel()
-
-    return BiologicalModel(
-        document=document,
-        virtual_patient_generator=VirtualPatientGenerator(
-            {
-                parameter.getId()
-                for parameter in sbml_model.getListOfParameters()
-            }
-        ),
-        environment_generator=EnvironmentGenerator(
-            {
-                physical_entity.getId()
-                for physical_entity in sbml_model.getListOfSpecies()
-            }
-        ),
-        constraints=set(),
-    )
+        return BiologicalModel(
+            document=document,
+            virtual_patient_generator=VirtualPatientGenerator(
+                {
+                    parameter.getId()
+                    for parameter in sbml_model.getListOfParameters()
+                }
+            ),
+            environment_generator=EnvironmentGenerator(
+                {
+                    physical_entity.getId()
+                    for physical_entity in sbml_model.getListOfSpecies()
+                }
+            ),
+            constraints=set(),
+        )

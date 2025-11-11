@@ -4,7 +4,7 @@ from typing import TypeAlias
 
 import libsbml
 
-from biological_scenarios_generation.core import NormalizedReal
+from biological_scenarios_generation.core import NormalizedReal, PartialOrder
 from biological_scenarios_generation.reactome import PhysicalEntity
 
 SId: TypeAlias = str
@@ -46,7 +46,7 @@ class BiologicalModel:
     document: libsbml.SBMLDocument
     virtual_patient_generator: VirtualPatientGenerator
     environment_generator: EnvironmentGenerator
-    constraints: set[tuple[PhysicalEntity, PhysicalEntity]]
+    constraints: PartialOrder[PhysicalEntity]
 
     @staticmethod
     def load(document: libsbml.SBMLDocument) -> "BiologicalModel":

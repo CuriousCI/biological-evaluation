@@ -34,7 +34,7 @@ def blackbox(
     transitory_penalty: float = 0.0
     for species in range(1, len(rr.timeCourseSelections)):
         concentration_mean_trajectory = [0] * len(result[:, species])
-        for i in range(len(concentration_mean_trajectory)):
+        for i in range(1, len(concentration_mean_trajectory)):
             concentration_mean_trajectory[i] = result[:i, species].mean()
 
         transitory_penalty += abs(

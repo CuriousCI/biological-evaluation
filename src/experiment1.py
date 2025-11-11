@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import libsbml
@@ -12,6 +13,7 @@ from biological_scenarios_generation.reactome import (
 from biological_scenarios_generation.scenario import (
     BiologicalScenarioDefinition,
 )
+from neo4j.exceptions import ServiceUnavailable
 
 from blackbox import blackbox
 
@@ -19,8 +21,14 @@ NEO4J_URL_REACTOME = "neo4j://localhost:7687"
 AUTH = ("noe4j", "neo4j")
 REACTOME_DATABASE = "graph.db"
 
+logger = logging.getLogger(__name__)
+
 
 def main() -> None:
+    logging.basicConfig(
+        filename=f"{Path(__file__).stem}.log", level=logging.INFO
+    )
+
     signal_transduction = Pathway(ReactomeDbId(162582))
     nitric_oxide = PhysicalEntity(ReactomeDbId(202124))
     cyclic_amp = PhysicalEntity(ReactomeDbId(30389))
@@ -40,8 +48,8 @@ def main() -> None:
         )
     )
 
-    # TODO: python, reflection, get current filename, strip ".py", add ".sbml"
-    filename: str = "experiment1.sbml"
+    model_filename: str = f"{Path(__file__).stem}.sbml"
+    model_path = Path(model_filename)
 
     try:
         with neo4j.GraphDatabase.driver(
@@ -52,17 +60,14 @@ def main() -> None:
                 biological_scenario_definition.generate_biological_model(driver)
             )
 
-        with Path(filename).open("w") as file:
+        with model_path.open("w") as file:
             _ = file.write(libsbml.writeSBMLToString(biological_model.document))
-    except Exception as e:
-        path = Path(filename)
-        assert path.exists()
-        assert path.is_file()
+    except ServiceUnavailable:
+        assert model_path.exists()
+        assert model_path.is_file()
 
-        document: libsbml.SBMLDocument = libsbml.readSBML(filename)
+        document: libsbml.SBMLDocument = libsbml.readSBML(model_filename)
         biological_model: BiologicalModel = BiologicalModel.load(document)
-
-    # print(biological_model.virtual_patient_generator.kinetic_constants)
 
     objective_function_value = blackbox(
         document=biological_model.document,
@@ -71,12 +76,7 @@ def main() -> None:
         constraints=biological_scenario_definition.constraints,
     )
 
-    print(objective_function_value)
-
-    # TODO: store values in log
-    # exit()
-    # print(e)
-    # exit()
+    logger.info(objective_function_value)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,9 @@
 import math
 from dataclasses import dataclass, field
-from typing import Self
+from typing import Self, TypeAlias, TypeVar
+
+T = TypeVar("T")
+PartialOrder: TypeAlias = set[tuple[T, T]]
 
 
 class IntGEZ(int):

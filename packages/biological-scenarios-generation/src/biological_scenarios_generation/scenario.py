@@ -1,16 +1,15 @@
 import itertools
-import random
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import reduce
 from operator import attrgetter
-from typing import Any, LiteralString, TypeAlias, TypeVar
+from typing import Any, LiteralString, TypeAlias
 
 import libsbml
 import neo4j
 
-from biological_scenarios_generation.core import IntGTZ
+from biological_scenarios_generation.core import IntGTZ, PartialOrder
 from biological_scenarios_generation.model import (
     BiologicalModel,
     EnvironmentGenerator,
@@ -117,9 +116,6 @@ CustomKineticLaw: TypeAlias = Callable[
 
 KineticLaw: TypeAlias = BaseKineticLaw | CustomKineticLaw
 
-T = TypeVar("T")
-PartialOrder: TypeAlias = set[tuple[T, T]]
-
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class BiologicalScenarioDefinition:
@@ -142,13 +138,13 @@ class BiologicalScenarioDefinition:
 
     @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
     class _BiologicalNetwork:
-        input_physical_entities_id: set[ReactomeDbId]
-        output_physical_entities_id: set[ReactomeDbId]
+        input_physical_entities: set[ReactomeDbId]
+        output_physical_entities: set[ReactomeDbId]
         network: set[PhysicalEntity | ReactionLikeEvent | Compartment]
 
         def __post_init__(self) -> None:
             assert self.network
-            assert self.input_physical_entities_id
+            assert self.input_physical_entities
 
     def __biological_network(
         self, neo4j_driver: neo4j.Driver
@@ -417,8 +413,8 @@ class BiologicalScenarioDefinition:
         )
 
         return BiologicalScenarioDefinition._BiologicalNetwork(
-            input_physical_entities_id=input_physical_entities_id,
-            output_physical_entities_id=output_physical_entities_id,
+            input_physical_entities=input_physical_entities_id,
+            output_physical_entities=output_physical_entities_id,
             network=physical_entities | reaction_like_events | compartments,
         )
 
@@ -460,12 +456,13 @@ class BiologicalScenarioDefinition:
                     compartment.setSize(1)
                     compartment.setSpatialDimensions(3)
                     compartment.setUnits("litre")
+
                 case PhysicalEntity():
                     species: libsbml.Species = sbml_model.createSpecies()
                     species.setId(repr(obj))
                     species_compartment = (
                         repr(next(iter(obj.compartments)))
-                        if len(list(obj.compartments)) > 0
+                        if obj.compartments
                         else "default_compartment"
                     )
                     species.setCompartment(species_compartment)
@@ -473,9 +470,10 @@ class BiologicalScenarioDefinition:
                     species.setSubstanceUnits("mole")
                     species.setBoundaryCondition(False)
                     species.setHasOnlySubstanceUnits(False)
-                    species.setInitialAmount(random.uniform(0, 1))
+                    species.setInitialAmount(0.5)
                     environment_physical_entities.add(obj)
-                    if obj.id in biological_network.input_physical_entities_id:
+
+                    if obj.id in biological_network.input_physical_entities:
                         input_reaction: libsbml.Reaction = (
                             sbml_model.createReaction()
                         )
@@ -494,13 +492,16 @@ class BiologicalScenarioDefinition:
                             libsbml.parseL3Formula(repr(obj))
                         )
 
+                    if obj.id in biological_network.output_physical_entities:
+                        pass
+
                 case ReactionLikeEvent():
                     reaction: libsbml.Reaction = sbml_model.createReaction()
                     reaction.setId(repr(obj))
                     reaction.setReversible(obj.is_reversible)
                     reaction_compartment = (
                         repr(next(iter(obj.compartments)))
-                        if len(list(obj.compartments)) > 0
+                        if obj.compartments
                         else "default_compartment"
                     )
                     reaction.setCompartment(reaction_compartment)
@@ -532,7 +533,7 @@ class BiologicalScenarioDefinition:
                     )
                     kinetic_law.setMath(libsbml.parseL3Formula(l3_formula))
 
-        # TODO: annotations for constraint
+        # TODO: sbml annotations for constraints
         return BiologicalModel(
             document=sbml_document,
             virtual_patient_generator=VirtualPatientGenerator(
@@ -541,5 +542,5 @@ class BiologicalScenarioDefinition:
             environment_generator=EnvironmentGenerator(
                 environment_physical_entities
             ),
-            constraints=set(),
+            constraints=self.constraints,
         )

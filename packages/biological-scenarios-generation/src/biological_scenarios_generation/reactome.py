@@ -68,7 +68,8 @@ class CatalystActivity(DatabaseObject):
 class Compartment(DatabaseObject):
     @override
     def __repr__(self) -> str:
-        return f"compartment_{super().__repr__()}"
+        return f"c_{super().__repr__()}"
+        # return f"compartment_{super().__repr__()}"
 
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
@@ -85,7 +86,8 @@ class PhysicalEntity(DatabaseObject):
 
     @override
     def __repr__(self) -> str:
-        return f"species_{super().__repr__()}"
+        # return f"species_{super().__repr__()}"
+        return f"s_{super().__repr__()}"
 
 
 class StandardRole(StrEnum):
@@ -139,7 +141,8 @@ class ReactionLikeEvent(Event):
 
     @override
     def __repr__(self) -> str:
-        return f"reaction_{super().__repr__()}"
+        return f"r_{super().__repr__()}"
+        # return f"reaction_{super().__repr__()}"
 
     def modifiers(
         self, modifier_role: ModifierRole | None = None

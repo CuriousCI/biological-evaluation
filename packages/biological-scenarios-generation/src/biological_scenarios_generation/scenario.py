@@ -38,61 +38,62 @@ class BaseKineticLaw(Enum):
     CONVENIENCE_KINETIC_LAW = auto()
 
     def __call__(
-        self, sbml_model: libsbml.Model, reaction_like_event: ReactionLikeEvent
-    ) -> tuple[MathML, list[libsbml.Parameter]]:
+        self, sbml_model: libsbml.Model, reaction: ReactionLikeEvent
+    ) -> tuple[MathML, set[SId]]:
         """Return reaction law and generate parameters."""
-        parameters: list[libsbml.Parameter] = []
+        kinetic_constants = set[SId]()
 
         def repr_stoichiometry(
-            entity_role: tuple[PhysicalEntity, StandardRoleInformation],
+            physical_entity_role_information: tuple[
+                PhysicalEntity, StandardRoleInformation
+            ],
         ) -> str:
-            (physical_entity, role) = entity_role
-            return f"({physical_entity}^{role.stoichiometry})"
+            (physical_entity, role_information) = (
+                physical_entity_role_information
+            )
+            return f"({physical_entity}^{role_information.stoichiometry})"
 
         match self:
             case BaseKineticLaw.LAW_OF_MASS_ACTION:
-                forward_parameter: libsbml.Parameter = (
+                forward_kinetic_constant: libsbml.Parameter = (
                     sbml_model.createParameter()
                 )
-                forward_parameter.setId(f"k_forward_{reaction_like_event}")
-                forward_parameter.setValue(0.0)
-                forward_parameter.setConstant(True)
-                parameters.append(forward_parameter)
-                formula_forward_reaction = f"(k_forward_{reaction_like_event} * {'*'.join(map(repr_stoichiometry, reaction_like_event.entities(StandardRole.INPUT)))})"
+                forward_kinetic_constant.setId(f"k_f_{reaction}")
+                forward_kinetic_constant.setValue(0.0)
+                forward_kinetic_constant.setConstant(True)
+                kinetic_constants.add(forward_kinetic_constant.getId())
+                formula_forward_reaction = f"({forward_kinetic_constant.getId()} * {'*'.join(map(repr_stoichiometry, reaction.entities(StandardRole.INPUT)))})"
 
                 formula_reverse_reaction: str = ""
-                if reaction_like_event.is_reversible:
-                    reverse_parameter: libsbml.Parameter = (
+                if reaction.is_reversible:
+                    reverse_kinetic_constant: libsbml.Parameter = (
                         sbml_model.createParameter()
                     )
-                    reverse_parameter.setValue(0.0)
-                    reverse_parameter.setId(f"k_reverse_{reaction_like_event}")
-                    reverse_parameter.setConstant(True)
-                    parameters.append(reverse_parameter)
-                    formula_reverse_reaction = f"- (k_reverse_{reaction_like_event} * {'*'.join(map(repr_stoichiometry, reaction_like_event.entities(StandardRole.OUTPUT)))})"
+                    reverse_kinetic_constant.setValue(0.0)
+                    reverse_kinetic_constant.setId(f"k_r_{reaction}")
+                    reverse_kinetic_constant.setConstant(True)
+                    kinetic_constants.add(reverse_kinetic_constant.getId())
+
+                    formula_reverse_reaction = f"- ({reverse_kinetic_constant.getId()} * {'*'.join(map(repr_stoichiometry, reaction.entities(StandardRole.OUTPUT)))})"
 
                 formula_hill_component: str = ""
                 modifiers_functions: list[str] = []
-                for modifier_id, (modifier, role) in enumerate(
-                    reaction_like_event.modifiers()
-                ):
-                    # TODO: hmmm.... think better about this one, give references to book to anything!
+                for mod_id, (modifier, role) in enumerate(reaction.modifiers()):
                     half_saturation_constant: libsbml.Parameter = (
                         sbml_model.createParameter()
                     )
-                    half_saturation_constant_id: str = (
-                        f"k_half_{modifier_id}_{reaction_like_event}"
-                    )
-                    half_saturation_constant.setId(half_saturation_constant_id)
-                    half_saturation_constant.setValue(1.0)
+                    half_saturation_constant.setId(f"k_h_{mod_id}_{reaction}")
+                    half_saturation_constant.setConstant(True)
+                    half_saturation_constant.setValue(0.5)
+                    kinetic_constants.add(half_saturation_constant.getId())
+
                     hill_function: str = ""
                     match role:
                         case ModifierRole.NEGATIVE_REGULATOR:
-                            hill_function = f"({half_saturation_constant_id} / ({half_saturation_constant_id} + {modifier}^10))"
+                            hill_function = f"({half_saturation_constant.getId()} / ({half_saturation_constant.getId()} + {modifier}^10))"
                         case _:
-                            hill_function = f"({modifier}^10 / ({half_saturation_constant_id} + {modifier}^10))"
+                            hill_function = f"({modifier}^10 / ({half_saturation_constant.getId()} + {modifier}^10))"
                     modifiers_functions.append(hill_function)
-                    parameters.append(half_saturation_constant)
 
                 if modifiers_functions:
                     formula_hill_component = (
@@ -103,15 +104,15 @@ class BaseKineticLaw(Enum):
 
                 return (
                     f"({formula_forward_reaction} {formula_reverse_reaction}) {formula_hill_component} {formula_regulation}",
-                    parameters,
+                    kinetic_constants,
                 )
 
             case BaseKineticLaw.CONVENIENCE_KINETIC_LAW:
-                return ("", [])
+                return ("", set[SId]())
 
 
 CustomKineticLaw: TypeAlias = Callable[
-    [libsbml.Model, ReactionLikeEvent], tuple[MathML, list[libsbml.Parameter]]
+    [libsbml.Model, ReactionLikeEvent], tuple[MathML, set[SId]]
 ]
 
 KineticLaw: TypeAlias = BaseKineticLaw | CustomKineticLaw
@@ -373,9 +374,11 @@ class BiologicalScenarioDefinition:
         input_physical_entities = set[ReactomeDbId](
             map(ReactomeDbId, itertools.chain(*records[0]["networkInputs"]))
         )
+
         output_physical_entities = set[ReactomeDbId](
             map(ReactomeDbId, itertools.chain(*records[0]["networkOutputs"]))
         )
+
         rows: list[dict[str, Any]] = records[0]["reactions"]
         reaction_like_events: set[ReactionLikeEvent] = {
             ReactionLikeEvent(
@@ -412,10 +415,6 @@ class BiologicalScenarioDefinition:
             set[Compartment](),
         )
 
-        print(physical_entities)
-        print(input_physical_entities)
-        print(output_physical_entities)
-
         return BiologicalScenarioDefinition._BiologicalNetwork(
             input_physical_entities=input_physical_entities,
             output_physical_entities=output_physical_entities,
@@ -442,7 +441,7 @@ class BiologicalScenarioDefinition:
         default_compartment.setSpatialDimensions(3)
         default_compartment.setUnits("litre")
 
-        virtual_patient_details = set[SId]()
+        kinetic_constants = set[SId]()
         environment_physical_entities = set[PhysicalEntity]()
 
         biological_network: BiologicalScenarioDefinition._BiologicalNetwork = (
@@ -464,12 +463,14 @@ class BiologicalScenarioDefinition:
                 case PhysicalEntity():
                     species: libsbml.Species = sbml_model.createSpecies()
                     species.setId(repr(obj))
-                    species_compartment = (
-                        repr(next(iter(obj.compartments)))
-                        if obj.compartments
-                        else "default_compartment"
-                    )
-                    species.setCompartment(species_compartment)
+                    # species_compartment = (
+                    #     repr(next(iter(obj.compartments)))
+                    #     if obj.compartments
+                    #     else "default_compartment"
+                    # )
+                    # species.setCompartment(species_compartment)
+                    species.setCompartment("default_compartment")
+
                     species.setConstant(False)
                     species.setSubstanceUnits("mole")
                     species.setBoundaryCondition(False)
@@ -478,30 +479,52 @@ class BiologicalScenarioDefinition:
                     environment_physical_entities.add(obj)
 
                     if obj.id in biological_network.input_physical_entities:
-                        input_reaction: libsbml.Reaction = (
+                        frontier_reaction: libsbml.Reaction = (
                             sbml_model.createReaction()
                         )
-                        input_reaction.setId(repr(obj))
-                        input_reaction.setReversible(False)
+                        frontier_reaction.setId(f"r_{obj}")
+                        frontier_reaction.setReversible(False)
+                        frontier_reaction.setFast(False)
+
+                        kinetic_constant: libsbml.Parameter = (
+                            sbml_model.createParameter()
+                        )
+                        kinetic_constant.setId(f"k_f_r_{obj}")
+                        kinetic_constant.setValue(1.0)
+                        kinetic_constant.setConstant(True)
+                        kinetic_constants.add(kinetic_constant.getId())
+
                         input_species_ref: libsbml.SpeciesReference = (
                             sbml_model.createProduct()
                         )
-                        input_species_ref.setSpecies(repr(obj))
+                        input_species_ref.setSpecies(f"{obj}")
                         input_species_ref.setConstant(False)
                         input_species_ref.setStoichiometry(1)
                         input_kinetic_law: libsbml.KineticLaw = (
-                            input_reaction.createKineticLaw()
+                            frontier_reaction.createKineticLaw()
                         )
                         input_kinetic_law.setMath(
-                            libsbml.parseL3Formula(repr(obj))
+                            libsbml.parseL3Formula(
+                                f"({kinetic_constant.getId()})"
+                            )
                         )
 
                     if obj.id in biological_network.output_physical_entities:
-                        output_reaction: libsbml.Reaction = (
+                        frontier_reaction: libsbml.Reaction = (
                             sbml_model.createReaction()
                         )
-                        output_reaction.setId(repr(obj))
-                        output_reaction.setReversible(False)
+                        frontier_reaction.setId(f"r_{obj}")
+                        frontier_reaction.setReversible(False)
+                        frontier_reaction.setFast(False)
+
+                        kinetic_constant: libsbml.Parameter = (
+                            sbml_model.createParameter()
+                        )
+                        kinetic_constant.setId(f"k_r_r_{obj}")
+                        kinetic_constant.setValue(0.0)
+                        kinetic_constant.setConstant(True)
+                        kinetic_constants.add(kinetic_constant.getId())
+
                         output_species_ref: libsbml.SpeciesReference = (
                             sbml_model.createReactant()
                         )
@@ -509,22 +532,26 @@ class BiologicalScenarioDefinition:
                         output_species_ref.setConstant(False)
                         output_species_ref.setStoichiometry(1)
                         output_kinetic_law: libsbml.KineticLaw = (
-                            output_reaction.createKineticLaw()
+                            frontier_reaction.createKineticLaw()
                         )
                         output_kinetic_law.setMath(
-                            libsbml.parseL3Formula(f"-{obj}")
+                            libsbml.parseL3Formula(
+                                f"-({kinetic_constant.getId()})"
+                            )
                         )
 
                 case ReactionLikeEvent():
                     reaction: libsbml.Reaction = sbml_model.createReaction()
-                    reaction.setId(repr(obj))
+                    reaction.setId(f"{obj}")
                     reaction.setReversible(obj.is_reversible)
-                    reaction_compartment = (
-                        repr(next(iter(obj.compartments)))
-                        if obj.compartments
-                        else "default_compartment"
-                    )
-                    reaction.setCompartment(reaction_compartment)
+                    reaction.setFast(False)
+                    # reaction_compartment = (
+                    #     repr(next(iter(obj.compartments)))
+                    #     if obj.compartments
+                    #     else "default_compartment"
+                    # )
+                    # reaction.setCompartment(reaction_compartment)
+                    reaction.setCompartment("default_compartment")
 
                     for physical_entity, role_information in obj.entities():
                         species_ref: libsbml.SpeciesReference
@@ -543,21 +570,23 @@ class BiologicalScenarioDefinition:
                     kinetic_law_procedure = self.kinetic_laws.get(
                         obj, self.default_kinetic_law
                     )
-                    l3_formula, parameters = kinetic_law_procedure(
-                        sbml_model, obj
+                    l3_formula, reaction_kinetic_constants = (
+                        kinetic_law_procedure(sbml_model, obj)
                     )
-                    for parameter in parameters:
-                        virtual_patient_details.add(parameter.getId())
                     kinetic_law: libsbml.KineticLaw = (
                         reaction.createKineticLaw()
                     )
                     kinetic_law.setMath(libsbml.parseL3Formula(l3_formula))
 
+                    kinetic_constants = (
+                        kinetic_constants | reaction_kinetic_constants
+                    )
+
         # TODO: sbml annotations for constraints
         return BiologicalModel(
             document=sbml_document,
             virtual_patient_generator=VirtualPatientGenerator(
-                virtual_patient_details
+                kinetic_constants
             ),
             environment_generator=EnvironmentGenerator(
                 environment_physical_entities

@@ -4,7 +4,7 @@ import os
 
 import buckpass
 import libsbml
-from biological_scenarios_generation.model import load_biological_model
+from biological_scenarios_generation.model import BiologicalModel
 from openbox import space
 from openbox.utils.constants import SUCCESS
 
@@ -26,11 +26,13 @@ def main() -> None:
     document: libsbml.SBMLDocument = libsbml.readSBML(
         f"{os.getenv('CLUSTER_PROJECT_PATH')}{args.file.strip()}"
     )
-    biological_model = load_biological_model(document)
+    biological_model = BiologicalModel.load(document)
     _space: space.Space = space.Space()
     _space.add_variables(
         [
-            space.Real(kinetic_constant, -20.0, 20.0, 0)
+            space.Real(kinetic_constant, -20.0, 0.0, 0.0)
+            if "k_h_" in kinetic_constant
+            else space.Real(kinetic_constant, -20.0, 20.0, 0.0)
             for kinetic_constant in biological_model.virtual_patient_generator.kinetic_constants
         ]
     )

@@ -20,8 +20,11 @@ class VirtualPatientGenerator:
 
     def __call__(self) -> VirtualPatient:
         return {
-            kinetic_constant: 10 ** random.uniform(-20, 20)
+            kinetic_constant: 10 ** random.uniform(-20, 0)
+            if "half" in kinetic_constant or "k_h_" in kinetic_constant
+            else 10 ** random.uniform(-20, 1)
             for kinetic_constant in self.kinetic_constants
+            # kinetic_constant: 10 ** random.uniform(-20, 20)
         }
 
 

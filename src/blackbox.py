@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 import libsbml
 import matplotlib.pyplot as plt
 import roadrunner
-from biological_scenarios_generation.core import Interval
+from biological_scenarios_generation.core import Interval, PartialOrder
 from biological_scenarios_generation.model import (
     Environment,
     PhysicalEntity,
@@ -20,7 +20,7 @@ def blackbox(
     document: libsbml.SBMLDocument,
     virtual_patient: VirtualPatient,
     environment: Environment,
-    constraints: set[tuple[PhysicalEntity, PhysicalEntity]],
+    constraints: PartialOrder[PhysicalEntity],
 ) -> float:
     rr: roadrunner.RoadRunner = roadrunner.RoadRunner(
         libsbml.writeSBMLToString(document)
@@ -29,13 +29,13 @@ def blackbox(
     for k, value in virtual_patient.items():
         rr[k] = value
 
-    result: np.ndarray = rr.simulate(start=0, end=10, points=1000)
+    result: np.ndarray = rr.simulate(start=0, end=1000, points=10000)
 
     transitory_penalty: float = 0.0
     for species in range(1, len(rr.timeCourseSelections)):
         concentration_mean_trajectory = [0] * len(result[:, species])
         for i in range(1, len(concentration_mean_trajectory)):
-            concentration_mean_trajectory[i] = result[:i, species].mean()
+            concentration_mean_trajectory[species] = result[:i, species].mean()
 
         transitory_penalty += abs(
             concentration_mean_trajectory[-1]
@@ -44,22 +44,29 @@ def blackbox(
             ]
         )
 
-    # rr.plot()
-
     normalization_penalty: float = 0.0
     for species in range(1, len(rr.timeCourseSelections)):
         for concentration in result[:, species]:
-            # if concentration > 1 or concentration < 0:
-            #     normalization_penalty += 10
             if concentration > 1:
                 normalization_penalty += concentration - 1
             elif concentration < 0:
                 normalization_penalty += abs(concentration)
 
-    for species in range(1, len(rr.timeCourseSelections)):
-        print(rr.timeCourseSelections[species], result[-1, species])
-
     return float(normalization_penalty)
+
+    # import pylab
+    #
+    # time = result[:, 0]
+    # for species in range(1, len(rr.timeCourseSelections)):
+    #     if result[-1, species] <= 1:
+    #         name = rr.timeCourseSelections[species]
+    #         _ = pylab.plot(time, result[:, species], label=str(name))
+    #         _ = pylab.legend()
+    #
+    # pylab.show()
+
+    # for species in range(1, len(rr.timeCourseSelections)):
+    #     print(rr.timeCourseSelections[species], result[-1, species])
 
     # print(rr.timeCourseSelections)
 

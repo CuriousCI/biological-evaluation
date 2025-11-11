@@ -56,7 +56,7 @@ if $run_reactome_sif_with_slurm_interactive; then
 fi
 
 if $run_reactome_locally_with_docker; then
-    docker run -p 7474:7474 -p 7687:7687  public.ecr.aws/reactome/graphdb:latest
+    docker run -p 7474:7474 -p 7687:7687 -e NEO4J_dbms_memory_heap_maxSize=1g public.ecr.aws/reactome/graphdb:latest
 fi
 
 

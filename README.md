@@ -30,3 +30,7 @@ Epidermal Growth Factor (EGF): A growth factor typically found in trace amounts 
 HER2: A signaling protein that requires minimal amounts for effective signaling
 
 # TODO: holy, I do need at least one common ancestor
+
+input: { 29356, 29364, 29368, 29468, 5693375, 1497830, 164358, 5610577, 5610579
+
+output: { 70106, 29968, 29336, 202124

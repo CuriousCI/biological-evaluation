@@ -370,10 +370,10 @@ class BiologicalScenarioDefinition:
                 case _:
                     return ModifierRole(obj["role"])
 
-        input_physical_entities_id = set[ReactomeDbId](
+        input_physical_entities = set[ReactomeDbId](
             map(ReactomeDbId, itertools.chain(*records[0]["networkInputs"]))
         )
-        output_physical_entities_id = set[ReactomeDbId](
+        output_physical_entities = set[ReactomeDbId](
             map(ReactomeDbId, itertools.chain(*records[0]["networkOutputs"]))
         )
         rows: list[dict[str, Any]] = records[0]["reactions"]
@@ -412,9 +412,13 @@ class BiologicalScenarioDefinition:
             set[Compartment](),
         )
 
+        print(physical_entities)
+        print(input_physical_entities)
+        print(output_physical_entities)
+
         return BiologicalScenarioDefinition._BiologicalNetwork(
-            input_physical_entities=input_physical_entities_id,
-            output_physical_entities=output_physical_entities_id,
+            input_physical_entities=input_physical_entities,
+            output_physical_entities=output_physical_entities,
             network=physical_entities | reaction_like_events | compartments,
         )
 
@@ -493,7 +497,23 @@ class BiologicalScenarioDefinition:
                         )
 
                     if obj.id in biological_network.output_physical_entities:
-                        pass
+                        output_reaction: libsbml.Reaction = (
+                            sbml_model.createReaction()
+                        )
+                        output_reaction.setId(repr(obj))
+                        output_reaction.setReversible(False)
+                        output_species_ref: libsbml.SpeciesReference = (
+                            sbml_model.createReactant()
+                        )
+                        output_species_ref.setSpecies(repr(obj))
+                        output_species_ref.setConstant(False)
+                        output_species_ref.setStoichiometry(1)
+                        output_kinetic_law: libsbml.KineticLaw = (
+                            output_reaction.createKineticLaw()
+                        )
+                        output_kinetic_law.setMath(
+                            libsbml.parseL3Formula(f"-{obj}")
+                        )
 
                 case ReactionLikeEvent():
                     reaction: libsbml.Reaction = sbml_model.createReaction()

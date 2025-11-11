@@ -29,7 +29,7 @@ def blackbox(
     for k, value in virtual_patient.items():
         rr[k] = value
 
-    result: np.ndarray = rr.simulate(start=0, end=1, points=1000)
+    result: np.ndarray = rr.simulate(start=0, end=10, points=1000)
 
     transitory_penalty: float = 0.0
     for species in range(1, len(rr.timeCourseSelections)):
@@ -40,22 +40,26 @@ def blackbox(
         transitory_penalty += abs(
             concentration_mean_trajectory[-1]
             - concentration_mean_trajectory[
-                int(len(concentration_mean_trajectory) / 2)
+                int(len(concentration_mean_trajectory) * 0.5)
             ]
         )
 
-        # for concentration in result[:, species]:
-        #     pass
+    # rr.plot()
 
     normalization_penalty: float = 0.0
     for species in range(1, len(rr.timeCourseSelections)):
         for concentration in result[:, species]:
+            # if concentration > 1 or concentration < 0:
+            #     normalization_penalty += 10
             if concentration > 1:
                 normalization_penalty += concentration - 1
             elif concentration < 0:
-                normalization_penalty += -concentration
+                normalization_penalty += abs(concentration)
 
-    return float(normalization_penalty + transitory_penalty)
+    for species in range(1, len(rr.timeCourseSelections)):
+        print(rr.timeCourseSelections[species], result[-1, species])
+
+    return float(normalization_penalty)
 
     # print(rr.timeCourseSelections)
 

@@ -392,42 +392,12 @@ CALL apoc.algo.dijkstra(n, m, "input|output", "", 1) YIELD path, weight
 RETURN path
 
 MATCH (n)
-OPTIONAL MATCH
-  (n)-[:catalystActivity]->
-  (c:CatalystActivity)-[:physicalEntity]->
-  (m:PhysicalEntity)
+// OPTIONAL MATCH
+//   (n)-[:catalystActivity]->
+// (c:CatalystActivity)-[:physicalEntity]->
+// (m:PhysicalEntity)
 WHERE
   n.dbId IN [
-    392129,
-    5610727,
-    202127,
-    170676,
-    111930,
-    164358,
-    202124,
-    29968,
-    5610577,
-    5610579,
-    70106,
-    29468,
-    170655,
-    163622,
-    1497830,
-    170665,
-    29356,
-    396910,
-    29368,
-    392049,
-    29364,
-    30389,
-    29366,
-    74294,
-    113592,
-    111865,
-    111294,
-    5693375
-  ] AND
-  m.dbId IN [
     392129,
     5610727,
     202127,

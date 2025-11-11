@@ -441,6 +441,15 @@ class BiologicalScenarioDefinition:
         default_compartment.setSpatialDimensions(3)
         default_compartment.setUnits("litre")
 
+        time: libsbml.Parameter = sbml_model.createParameter()
+        time.setId("time_")
+        time.setConstant(False)
+        time.setValue(0.0)
+
+        time_rule: libsbml.RateRule = sbml_model.createRateRule()
+        time_rule.setVariable("time_")
+        time_rule.setFormula("1")
+
         kinetic_constants = set[SId]()
         environment_physical_entities = set[PhysicalEntity]()
 
@@ -462,20 +471,30 @@ class BiologicalScenarioDefinition:
 
                 case PhysicalEntity():
                     species: libsbml.Species = sbml_model.createSpecies()
-                    species.setId(repr(obj))
-                    # species_compartment = (
-                    #     repr(next(iter(obj.compartments)))
-                    #     if obj.compartments
-                    #     else "default_compartment"
-                    # )
-                    # species.setCompartment(species_compartment)
+                    species.setId(f"{obj}")
                     species.setCompartment("default_compartment")
-
                     species.setConstant(False)
                     species.setSubstanceUnits("mole")
                     species.setBoundaryCondition(False)
                     species.setHasOnlySubstanceUnits(False)
-                    species.setInitialAmount(0.5)
+                    # species.setInitialAmount(0.5)
+                    species.setInitialConcentration(0.5)
+                    species.setHasOnlySubstanceUnits(False)
+
+                    species_mean: libsbml.Parameter = (
+                        sbml_model.createParameter()
+                    )
+                    species_mean.setId(f"mean_{obj}")
+                    species_mean.setConstant(False)
+                    species_mean.setValue(0.0)
+                    species_mean_rule: libsbml.RateRule = (
+                        sbml_model.createRateRule()
+                    )
+                    species_mean_rule.setVariable(species_mean.getId())
+                    species_mean_rule.setFormula(
+                        f"({species.getId()} - {species_mean.getId()}) / (time_ + 10e-6)"
+                    )
+
                     environment_physical_entities.add(obj)
 
                     if obj.id in biological_network.input_physical_entities:
@@ -536,7 +555,7 @@ class BiologicalScenarioDefinition:
                         )
                         output_kinetic_law.setMath(
                             libsbml.parseL3Formula(
-                                f"-({kinetic_constant.getId()})"
+                                f"({kinetic_constant.getId()} * {obj})"
                             )
                         )
 

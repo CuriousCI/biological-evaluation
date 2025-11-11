@@ -1,9 +1,8 @@
 from typing import TYPE_CHECKING
 
 import libsbml
-import matplotlib.pyplot as plt
 import roadrunner
-from biological_scenarios_generation.core import Interval, PartialOrder
+from biological_scenarios_generation.core import PartialOrder
 from biological_scenarios_generation.model import (
     Environment,
     PhysicalEntity,
@@ -29,41 +28,49 @@ def blackbox(
     for k, value in virtual_patient.items():
         rr[k] = value
 
-    result: np.ndarray = rr.simulate(start=0, end=1000, points=10000)
-
-    transitory_penalty: float = 0.0
-    for species in range(1, len(rr.timeCourseSelections)):
-        concentration_mean_trajectory = [0] * len(result[:, species])
-        for i in range(1, len(concentration_mean_trajectory)):
-            concentration_mean_trajectory[species] = result[:i, species].mean()
-
-        transitory_penalty += abs(
-            concentration_mean_trajectory[-1]
-            - concentration_mean_trajectory[
-                int(len(concentration_mean_trajectory) * 0.5)
-            ]
-        )
-
-    normalization_penalty: float = 0.0
-    for species in range(1, len(rr.timeCourseSelections)):
-        for concentration in result[:, species]:
-            if concentration > 1:
-                normalization_penalty += concentration - 1
-            elif concentration < 0:
-                normalization_penalty += abs(concentration)
-
-    return float(normalization_penalty)
+    result: np.ndarray = rr.simulate(start=0, end=20000, points=100000)
 
     # import pylab
     #
     # time = result[:, 0]
-    # for species in range(1, len(rr.timeCourseSelections)):
-    #     if result[-1, species] <= 1:
-    #         name = rr.timeCourseSelections[species]
-    #         _ = pylab.plot(time, result[:, species], label=str(name))
+    # for col_number, col_name in enumerate(rr.timeCourseSelections):
+    #     if "time" not in col_name and "mean" not in col_name:
+    #         # if result[-1, species] <= 1:
+    #         name = col_name
+    #         _ = pylab.plot(time, result[:, col_number], label=str(name))
     #         _ = pylab.legend()
     #
     # pylab.show()
+
+    normalization_penalty: float = 0.0
+    for col_number, col_name in enumerate(rr.timeCourseSelections):
+        if "time" not in col_name and "mean" not in col_name:
+            for concentration in result[:, col_number]:
+                if concentration > 1:
+                    normalization_penalty += concentration - 1
+                elif concentration < 0:
+                    normalization_penalty += abs(concentration)
+
+    transitory_penalty: float = 0.0
+    for col_number, col_name in enumerate(rr.timeCourseSelections):
+        if "mean" in col_name:
+            transitory_penalty += abs(
+                result[-1, col_number] - result[-1000, col_number]
+            )
+
+    return float(normalization_penalty + transitory_penalty)
+
+    # for species in range(1, len(rr.timeCourseSelections)):
+    #     concentration_mean_trajectory = [0] * len(result[:, species])
+    #     for i in range(1, len(concentration_mean_trajectory)):
+    #         concentration_mean_trajectory[species] = result[:i, species].mean()
+    #
+    #     transitory_penalty += abs(
+    #         concentration_mean_trajectory[-1]
+    #         - concentration_mean_trajectory[
+    #             int(len(concentration_mean_trajectory) * 0.5)
+    #         ]
+    #     )
 
     # for species in range(1, len(rr.timeCourseSelections)):
     #     print(rr.timeCourseSelections[species], result[-1, species])

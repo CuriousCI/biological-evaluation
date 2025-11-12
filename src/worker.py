@@ -67,7 +67,7 @@ def main() -> None:
         url=OPENBOX_URL,
         task_id=openbox_task_id,
         config_dict=suggestion,
-        objectives=[loss] if loss else [],
+        objectives=[loss] if loss else [10e20],
         constraints=[],
         trial_info=trial_info,
         trial_state=SUCCESS if loss else FAILED,

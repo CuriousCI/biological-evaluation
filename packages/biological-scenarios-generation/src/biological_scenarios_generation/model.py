@@ -62,6 +62,7 @@ class BiologicalModel:
                     parameter.getId()
                     for parameter in sbml_model.getListOfParameters()
                     if "time" not in parameter.getId()
+                    and "mean" not in parameter.getId()
                 }
             ),
             environment_generator=EnvironmentGenerator(

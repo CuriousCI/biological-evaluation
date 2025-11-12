@@ -35,15 +35,19 @@ def main() -> None:
     print(suggestion, flush=True)
 
     blackbox_start_time = datetime.datetime.now(tz=datetime.UTC)
-    observation = blackbox(
-        document=biological_model.document,
-        virtual_patient={
-            kinetic_constant: 10**value
-            for kinetic_constant, value in suggestion.items()
-        },
-        environment=biological_model.environment_generator(),
-        constraints=set(),
-    )
+    loss: float
+    try:
+        loss = blackbox(
+            document=biological_model.document,
+            virtual_patient={
+                kinetic_constant: 10**value
+                for kinetic_constant, value in suggestion.items()
+            },
+            environment=biological_model.environment_generator(),
+            constraints=set(),
+        )
+    except:
+        loss = float("+inf")
     blackbox_end_time = datetime.datetime.now(tz=datetime.UTC)
 
     trial_info = {
@@ -56,7 +60,7 @@ def main() -> None:
         url=OPENBOX_URL,
         task_id=args.task.strip(),
         config_dict=suggestion,
-        objectives=[observation],
+        objectives=[loss],
         constraints=[],
         trial_info=trial_info,
         trial_state=SUCCESS,

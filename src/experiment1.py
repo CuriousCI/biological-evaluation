@@ -69,14 +69,17 @@ def main() -> None:
         document: libsbml.SBMLDocument = libsbml.readSBML(model_filename)
         biological_model: BiologicalModel = BiologicalModel.load(document)
 
-    objective_function_value = blackbox(
-        document=biological_model.document,
-        virtual_patient=biological_model.virtual_patient_generator(),
-        environment=biological_model.environment_generator(),
-        constraints=biological_scenario_definition.constraints,
-    )
-
-    logger.info(objective_function_value)
+    try:
+        loss = blackbox(
+            document=biological_model.document,
+            virtual_patient=biological_model.virtual_patient_generator(),
+            # virtual_patient=virtual_patient,
+            environment=biological_model.environment_generator(),
+            constraints=biological_scenario_definition.constraints,
+        )
+        logger.info(loss)
+    except:
+        logger.info(float("+inf"))
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ from biological_scenarios_generation.model import (
 if TYPE_CHECKING:
     import numpy as np
 
-# TODO: iper parameters, maybe a class with the actual names
+# TODO: iper parameters, maybe a class / enum with the actual names
 
 
 def blackbox(
@@ -28,7 +28,7 @@ def blackbox(
     for k, value in virtual_patient.items():
         rr[k] = value
 
-    result: np.ndarray = rr.simulate(start=0, end=20000, points=100000)
+    result: np.ndarray = rr.simulate(start=0, end=20000, points=1000000)
 
     normalization_penalty: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):
@@ -59,34 +59,3 @@ def blackbox(
     #         _ = pylab.legend()
     #
     # pylab.show()
-
-    # for species in range(1, len(rr.timeCourseSelections)):
-    #     concentration_mean_trajectory = [0] * len(result[:, species])
-    #     for i in range(1, len(concentration_mean_trajectory)):
-    #         concentration_mean_trajectory[species] = result[:i, species].mean()
-    #
-    #     transitory_penalty += abs(
-    #         concentration_mean_trajectory[-1]
-    #         - concentration_mean_trajectory[
-    #             int(len(concentration_mean_trajectory) * 0.5)
-    #         ]
-    #     )
-
-    # for species in range(1, len(rr.timeCourseSelections)):
-    #     print(rr.timeCourseSelections[species], result[-1, species])
-
-    # print(rr.timeCourseSelections)
-
-    # times = result[:, 0]
-    # print(times)
-    # print(result.shape)
-    # print(result)
-    # print(result[0])
-    # print(rr["time"])
-    # for item in environment:
-    #     print(item, rr[item])
-    # print(rr["species_202124"])
-    # print(rr["species_30389"])
-    # _ = rr.plot()
-
-    # TODO: basically calculate loss function according to constraint!, yay

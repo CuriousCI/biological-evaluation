@@ -30,18 +30,6 @@ def blackbox(
 
     result: np.ndarray = rr.simulate(start=0, end=20000, points=100000)
 
-    # import pylab
-    #
-    # time = result[:, 0]
-    # for col_number, col_name in enumerate(rr.timeCourseSelections):
-    #     if "time" not in col_name and "mean" not in col_name:
-    #         # if result[-1, species] <= 1:
-    #         name = col_name
-    #         _ = pylab.plot(time, result[:, col_number], label=str(name))
-    #         _ = pylab.legend()
-    #
-    # pylab.show()
-
     normalization_penalty: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):
         if "time" not in col_name and "mean" not in col_name:
@@ -59,6 +47,18 @@ def blackbox(
             )
 
     return float(normalization_penalty + transitory_penalty)
+
+    # import pylab
+    #
+    # time = result[:, 0]
+    # for col_number, col_name in enumerate(rr.timeCourseSelections):
+    #     if "time" not in col_name and "mean" not in col_name:
+    #         # if result[-1, species] <= 1:
+    #         name = col_name
+    #         _ = pylab.plot(time, result[:, col_number], label=str(name))
+    #         _ = pylab.legend()
+    #
+    # pylab.show()
 
     # for species in range(1, len(rr.timeCourseSelections)):
     #     concentration_mean_trajectory = [0] * len(result[:, species])

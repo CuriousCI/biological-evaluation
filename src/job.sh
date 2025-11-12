@@ -4,4 +4,5 @@ set -a
 source .env
 set +a
 
-uv run src/worker.py "$@"
+cd $CLUSTER_PROJECT_PATH 
+$HOME/.local/bin/uv run src/worker.py "$@"

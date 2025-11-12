@@ -30,7 +30,7 @@ def main() -> None:
     assert model_path.exists()
     assert model_path.is_file()
 
-    openbox_task_id: buckpass.util.OpenBoxTaskId = buckpass.util.OpenBoxTaskId(
+    openbox_task_id: buckpass.core.OpenBoxTaskId = buckpass.core.OpenBoxTaskId(
         args.task
     ).strip()
 

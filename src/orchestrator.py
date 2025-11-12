@@ -9,7 +9,7 @@ from openbox import space
 from openbox.artifact.remote_advisor import RemoteAdvisor
 
 policy: (
-    None | BurstPolicy[buckpass.util.SlurmJobId, buckpass.util.OpenBoxTaskId]
+    None | BurstPolicy[buckpass.core.SlurmJobId, buckpass.core.OpenBoxTaskId]
 ) = None
 
 

@@ -30,17 +30,20 @@ def _blackbox(
     result: Trajectory = rr.simulate(
         start=int(os.getenv("SIMULATION_START") or 0),
         end=int(os.getenv("SIMULATION_END") or 1000),
-        points=int(os.getenv("SIMULATION_POINTS") or 100000),
+        points=int(os.getenv("SIMULATION_POINTS") or 10000),
     )
 
     normalization_loss: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):
         if "time" not in col_name and "mean" not in col_name:
             for concentration in result[:, col_number]:
-                if concentration > 1:
-                    normalization_loss += concentration - 1
-                elif concentration < 0:
-                    normalization_loss += abs(concentration)
+                if concentration > 1 or concentration < 0:
+                    normalization_loss += 1
+
+                # if concentration > 1:
+                #     normalization_loss += concentration - 1
+                # elif concentration < 0:
+                #     normalization_loss += abs(concentration)
 
     transitory_loss: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):

@@ -27,19 +27,12 @@ def main() -> None:
         f"{os.getenv('CLUSTER_PROJECT_PATH')}{args.file.strip()}"
     )
     biological_model = BiologicalModel.load(document)
-    _space: space.Space = space.Space()
-    _space.add_variables(
-        [
-            space.Real(kinetic_constant, -20.0, 0.0, 0.0)
-            if "k_h_" in kinetic_constant
-            else space.Real(kinetic_constant, -20.0, 20.0, 0.0)
-            for kinetic_constant in biological_model.virtual_patient_generator.kinetic_constants
-        ]
-    )
 
     suggestion: dict[str, float] = buckpass.openbox_api.get_suggestion(
         url=OPENBOX_URL, task_id=buckpass.util.OpenBoxTaskId(args.task)
     )
+
+    print(suggestion, flush=True)
 
     blackbox_start_time = datetime.datetime.now(tz=datetime.UTC)
     observation = blackbox(

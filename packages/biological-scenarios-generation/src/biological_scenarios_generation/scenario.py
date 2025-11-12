@@ -601,7 +601,6 @@ class BiologicalScenarioDefinition:
                         kinetic_constants | reaction_kinetic_constants
                     )
 
-        # TODO: sbml annotations for constraints
         return BiologicalModel(
             document=sbml_document,
             virtual_patient_generator=VirtualPatientGenerator(

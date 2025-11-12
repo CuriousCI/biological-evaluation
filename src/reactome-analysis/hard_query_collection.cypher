@@ -84,7 +84,6 @@
 //     ) 
 //     RETURN DISTINCT r'
 // 
-// TODO: query that gets ancestors at any depth, but excludes encapsulated events, way faster, less useful
 // MATCH path = ({dbId: 158754})<-[*]-()
 // WHERE 
 //     NONE (node in nodes(path) WHERE node.dbId IN [381937]) AND

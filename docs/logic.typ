@@ -6,9 +6,6 @@
 #let operation_parameter(it) = underline(stroke: .3pt, emph(it))
 #let type_predicate(it) = text(rgb("458588"), style: "normal", it)
 
-// TODO: find a way to handle all Typst shorthands available in maths, without having to write them manually
-// TODO: how can I (query / reference) (constraints / operations) / procedures? metadata()? label()?
-// TODO: handle variables scopes
 
 #let world-keywords = (
     "true",
@@ -153,7 +150,6 @@
     })
 }
 
-// TODO: I can't use this in `raw` block
 #let extension(
     body: none,
     new-objects: none,

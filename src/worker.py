@@ -1,12 +1,14 @@
 import argparse
+import builtins
+import contextlib
 import datetime
 import os
+from pathlib import Path
 
 import buckpass
 import libsbml
 from biological_scenarios_generation.model import BiologicalModel
-from openbox import space
-from openbox.utils.constants import SUCCESS
+from openbox.utils.constants import FAILED, SUCCESS
 
 from blackbox import blackbox
 
@@ -23,20 +25,27 @@ def main() -> None:
     _ = argument_parser.add_argument("-f", "--file", required=True)
     args = argument_parser.parse_args()
 
+    model_file: str = str(args.file).strip()
+    model_path = Path(model_file)
+    assert model_path.exists()
+    assert model_path.is_file()
+
+    openbox_task_id: buckpass.util.OpenBoxTaskId = buckpass.util.OpenBoxTaskId(
+        args.task
+    ).strip()
+
     document: libsbml.SBMLDocument = libsbml.readSBML(
-        f"{os.getenv('CLUSTER_PROJECT_PATH')}{args.file.strip()}"
+        f"{os.getenv('CLUSTER_PROJECT_PATH')}{model_file}"
     )
     biological_model = BiologicalModel.load(document)
 
     suggestion: dict[str, float] = buckpass.openbox_api.get_suggestion(
-        url=OPENBOX_URL, task_id=buckpass.util.OpenBoxTaskId(args.task)
+        url=OPENBOX_URL, task_id=openbox_task_id
     )
 
-    print(suggestion, flush=True)
-
     blackbox_start_time = datetime.datetime.now(tz=datetime.UTC)
-    loss: float
-    try:
+    loss: float | None = None
+    with contextlib.suppress(builtins.BaseException):
         loss = blackbox(
             document=biological_model.document,
             virtual_patient={
@@ -44,10 +53,8 @@ def main() -> None:
                 for kinetic_constant, value in suggestion.items()
             },
             environment=biological_model.environment_generator(),
-            constraints=set(),
+            species_partial_order=set(),
         )
-    except:
-        loss = float("+inf")
     blackbox_end_time = datetime.datetime.now(tz=datetime.UTC)
 
     trial_info = {
@@ -58,12 +65,12 @@ def main() -> None:
 
     buckpass.openbox_api.update_observation(
         url=OPENBOX_URL,
-        task_id=args.task.strip(),
+        task_id=openbox_task_id,
         config_dict=suggestion,
-        objectives=[loss],
+        objectives=[loss] if loss else [],
         constraints=[],
         trial_info=trial_info,
-        trial_state=SUCCESS,
+        trial_state=SUCCESS if loss else FAILED,
     )
 
 
@@ -72,45 +79,3 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         print(e, flush=True)
-
-
-# import json
-# import requests
-# _ = requests.post(
-#     ORCHESTRATOR_URL,
-#     data=json.dumps(
-#         {"worker_id": os.getenv("SLURM_JOB_ID"), "event": "START"}
-#     ),
-#     timeout=100,
-# )
-
-# _ = requests.post(
-#     ORCHESTRATOR_URL,
-#     data=json.dumps(
-#         {"worker_id": os.getenv("SLURM_JOB_ID"), "event": "END"}
-#     ),
-#     timeout=100,
-# )
-
-
-# from example import SPACE
-# from openbox.utils.config_space import Configuration
-# from openbox.utils.constants import SUCCESS
-
-
-# def blackbox(configuration: Configuration) -> float:
-#     x = np.array(list(configuration.get_dictionary().values()))
-#     return float(x[0] * x[1] + x[1] ** 2 - x[0] ** 2 * x[1])
-
-# virtual
-# machine
-# compose
-
-# configuration = Configuration(_space, suggestion)
-# SPACE: space.Space = space.Space()
-# SPACE.add_variables(
-#     [
-#         space.Real("x1", -2.5, 2.5, 0),
-#         space.Real("x2", -2.4, 2.7, 0),
-#     ],
-# )

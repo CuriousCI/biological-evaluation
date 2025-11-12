@@ -15,7 +15,7 @@ from biological_scenarios_generation.scenario import (
 )
 from neo4j.exceptions import ServiceUnavailable
 
-from blackbox import blackbox
+from blackbox import plot_blackbox
 
 NEO4J_URL_REACTOME = "neo4j://localhost:7687"
 AUTH = ("noe4j", "neo4j")
@@ -70,12 +70,11 @@ def main() -> None:
         biological_model: BiologicalModel = BiologicalModel.load(document)
 
     try:
-        loss = blackbox(
+        loss = plot_blackbox(
             document=biological_model.document,
             virtual_patient=biological_model.virtual_patient_generator(),
-            # virtual_patient=virtual_patient,
             environment=biological_model.environment_generator(),
-            constraints=biological_scenario_definition.constraints,
+            species_partial_order=biological_scenario_definition.constraints,
         )
         logger.info(loss)
     except:

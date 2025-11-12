@@ -27,8 +27,6 @@
 #let logic-keywords = ("forall", "exists", "and", "or", "xor", "in")
 #let logic-symbols = ("<->", "<=", "!=", "->")
 
-// TODO: instead of function, do something like "show raw.where(lang: "logic")
-// TODO: use more \b
 #let logic(body) = {
     show sym.space.nobreak: hide(`  `)
 

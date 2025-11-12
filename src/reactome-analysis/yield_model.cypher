@@ -20,7 +20,6 @@ CALL
   YIELD node
 SET node: TargetReactionLikeEvent;
 
-// TODO: add compartments! Otherwise simulation can't be done!
 MATCH (targetSpecies)
 WHERE targetSpecies.dbId IN [202124]
 CALL
@@ -197,9 +196,6 @@ REMOVE n: TargetReactionLikeEvent;
 //   YIELD node
 // RETURN DISTINCT node;
 
-// TODO: has_event_2 baby!
-// TODO: how much time does it take for the creation of direct edges to work? Way too much, 1 hour and 30 minutes +
-// TODO: what happens when instead of using stIdVersion I use id od dbId?
 // MATCH
 //   (reaction:ReactionLikeEvent)-[input:input]->(physicalEntity:PhysicalEntity)
 // CREATE
@@ -216,7 +212,6 @@ REMOVE n: TargetReactionLikeEvent;
 //   (reaction)<-[:catalyst_2]-(reactionCatalyst),
 //   (reactionOutput)<-[:output_2]-(reaction);
 //
-// TODO: HERE!
 // MATCH (reaction:ReactionLikeEvent)-[:input]->(physicalEntity:PhysicalEntity)
 // CREATE (reaction)<-[:input_]-(physicalEntity);
 // MATCH
@@ -246,10 +241,6 @@ REMOVE n: TargetReactionLikeEvent;
 // MATCH (reaction)<-[:catalyst_]-(reactionCatalyst)
 // CREATE (reaction)<-[:fixed_point_2]-(reactionCatalyst);
 
-// TODO filter only ones where paths exists
-// TODO make one big query if possible
-// TODO test with vs without index
-// TODO: create token lookup index for ReactionLikeEvent, what other indexes can I add
 // CREATE LOOKUP INDEX node_label_lookup_index IF NOT EXISTS FOR (node) ON EACH labels (node);;
 // CREATE LOOKUP INDEX rel_type_lookup_index IF NOT EXISTS FOR ()-[rel]-() ON EACH type (rel);
 // CALL db.awaitIndexes(1000);
@@ -263,14 +254,9 @@ REMOVE n: TargetReactionLikeEvent;
 // }
 // RETURN COUNT(DISTINCT reaction);
 
-// TODO: explain
-// https://neo4j.com/docs/cypher-manual/current/indexes/search-performance-indexes/managing-indexes/
-
 // labelFilter: "+ReactionLikeEvent",
 // minLevel: 1,
 // maxLevel: 10
-
-// TODO: parallelize: multiple queries each for a different target, then put the dbId together, and query only those DBID with their respective inputs!
 
 //   (reaction),
 //   (reactionOutput)<-[:output]-(reaction)
@@ -279,7 +265,6 @@ REMOVE n: TargetReactionLikeEvent;
 //   (reaction)<-[:fixed_point_2]-(reactionCatalyst),
 //   (reactionOutput)<-[:fixed_point_2]-(reaction);
 
-// TODO: explain
 // MATCH ({dbId: 162582})-[:hasEvent*]->(reaction)
 // WITH DISTINCT reaction
 // MATCH (targetSpecies)<-[:output_2|input_2|catalyst_2*..3]-(reaction)
@@ -290,7 +275,6 @@ REMOVE n: TargetReactionLikeEvent;
 // CREATE LOOKUP INDEX rel_type_lookup_index_2 IF NOT EXISTS FOR ()-[rel]-() ON EACH type (rel);
 // CALL db.awaitIndexes(1000);
 
-// TODO: bigger set of target species
 // MATCH ({dbId: 162582})-[:hasEvent*]->(reaction)
 // WITH DISTINCT reaction
 // MATCH (targetSpecies)<-[:output|input_|catalyst_*..3]-(reaction)
@@ -316,7 +300,6 @@ REMOVE n: TargetReactionLikeEvent;
 //         products: products
 //       }));
 
-// TODO: add label to node
 // MATCH ({dbId: 162582})-[:hasEvent*]->(reaction)
 // WITH DISTINCT reaction
 // MATCH path= (targetSpecies)<-[:output|input_|catalyst_*..3]-(reaction)
@@ -325,7 +308,7 @@ REMOVE n: TargetReactionLikeEvent;
 // RETURN COUNT (DISTINCT reaction);
 
 // WITH [202124] AS targetSpecies
-// WITH [162582] AS includedPathways // TODO: rename, something like "range" or "domain"
+// WITH [162582] AS includedPathways
 // WITH [2173793, 198753, 199920, 170670, 114508, 354192] AS ignoredPathways
 // ALL(
 //   node IN nodes(path)

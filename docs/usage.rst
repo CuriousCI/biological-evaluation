@@ -1,8 +1,6 @@
 Usage Guide
 ===========
 
-TODO: check out other documentations around to learn how to write a good documentation 
-for a project.
 
 Getting Started
 ---------------

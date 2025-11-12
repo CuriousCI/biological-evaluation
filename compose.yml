@@ -41,10 +41,7 @@ services:
 
   mongo:
     image: mongo:4.4
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=openbox
-      - MONGO_INITDB_ROOT_PASSWORD=openbox
-      - MONGO_INITDB_DATABASE=openbox
+    env_file: ".env"
     networks:
       - virtual_machine
 
@@ -64,9 +61,7 @@ services:
 
   postgres:
     image: postgres
-    environment:
-      POSTGRES_USER: orchestrator
-      POSTGRES_PASSWORD: orchestrator
+    env_file: ".env"
     networks:
       - virtual_machine
 

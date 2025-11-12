@@ -138,9 +138,6 @@ if $submit_batch_job; then
         sbatch_args+=( "-w $jobid_to_wait_for" )
     fi
 
-    # sbatch -J "reactome_$basename" --partition multicore --mem 131072 temp.job "${sbatch_args[@]}"
     sbatch -J "reactome_$basename" --partition multicore --mem 196608 temp.job "${sbatch_args[@]}"
 fi
 
-# TODO: total memory required calculated (total number of GBs calculated from variables, then multiplied by 1024, and saved to file as settings)
-# TODO: find a way to expand additional args passed to script directly to the command 

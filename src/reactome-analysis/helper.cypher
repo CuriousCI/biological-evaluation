@@ -147,5 +147,3 @@ MATCH
   path2 = (r)-[:input|output*..4]-(complex)
 RETURN path, path2
 LIMIT 1
-
-// TODO: species can be both catalyst and input and be part of output

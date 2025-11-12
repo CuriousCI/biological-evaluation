@@ -1,19 +1,15 @@
-"""sbatch via ssh."""
-
 import subprocess
 
 from typing_extensions import override
 
-from buckpass.core import Submitter
-from buckpass.core.util import OpenBoxTaskId, SlurmJobId
+from buckpass.core import OpenBoxTaskId, SlurmJobId
+from buckpass.core.submitter import Submitter
 
 
-class SshSubmitter(Submitter[SlurmJobId, OpenBoxTaskId]):
-    """sbatch via ssh."""
-
+class EmulationSubmitter(Submitter[OpenBoxTaskId, SlurmJobId]):
     @override
     def submit(self, args: OpenBoxTaskId) -> SlurmJobId:
-        stdout: str = subprocess.run(
+        completed_process = subprocess.run(
             [
                 "/usr/bin/sshpass",
                 "-p",
@@ -26,7 +22,11 @@ class SshSubmitter(Submitter[SlurmJobId, OpenBoxTaskId]):
             ],
             check=False,
             capture_output=True,
-        ).stdout.decode()
+        )
+
+        stdout: str = completed_process.stdout.decode()
+        stderr: str = completed_process.stderr.decode()
+        print(stdout, stderr, sep="\n")
 
         # `sbatch` prints "Submitted batch job 781422" to stdout
         return "".join(filter(str.isnumeric, stdout))

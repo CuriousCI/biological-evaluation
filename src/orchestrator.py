@@ -4,7 +4,7 @@ from pathlib import Path
 
 import buckpass
 from biological_scenarios_generation.model import BiologicalModel, libsbml
-from buckpass.policy.burst_policy import BurstPolicy
+from buckpass.policy.burst import BurstPolicy
 from openbox import space
 from openbox.artifact.remote_advisor import RemoteAdvisor
 
@@ -18,19 +18,23 @@ def main() -> None:
     _ = argument_parser.add_argument("-f", "--file", required=True)
     args = argument_parser.parse_args()
 
-    path = Path(args.file)
-    assert path.exists()
-    assert path.is_file()
+    model_file: str = str(args.file)
+    model_path = Path(model_file)
+    assert model_path.exists()
+    assert model_path.is_file()
 
-    document: libsbml.SBMLDocument = libsbml.readSBML(args.file)
-    biological_model = BiologicalModel.load(document)
+    document: libsbml.SBMLDocument = libsbml.readSBML(model_file)
+    biological_model: BiologicalModel = BiologicalModel.load(document)
 
     _space: space.Space = space.Space()
     _space.add_variables(
         [
-            space.Real(kinetic_constant, -20.0, 0.0, 0.0)
-            if "k_h_" in kinetic_constant
-            else space.Real(kinetic_constant, -20.0, 20.0, 0.0)
+            space.Real(
+                name=kinetic_constant,
+                upper=-20.0,
+                lower=0.0 if "k_h_" in kinetic_constant else 20.0,
+                default_value=0.0,
+            )
             for kinetic_constant in biological_model.virtual_patient_generator.kinetic_constants
         ]
     )
@@ -41,7 +45,7 @@ def main() -> None:
         port=8000,
         email="test@test.test",
         password=os.getenv("OPENBOX_PASSWORD"),
-        task_name=args.file,
+        task_name=model_file,
         num_objectives=1,
         num_constraints=0,
         sample_strategy="bo",
@@ -51,8 +55,8 @@ def main() -> None:
     )
 
     _ = BurstPolicy(
-        args=f"--task {remote_advisor.task_id} --file {args.file}",
-        batch_size=buckpass.IntGEZ(1000),
+        args=f"--task {remote_advisor.task_id} --file {model_file}",
+        size=buckpass.core.IntGTZ(1000),
         submitter=buckpass.Uniroma1Submitter(),
     )
 

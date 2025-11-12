@@ -1,4 +1,3 @@
-// CREATE INDEX TODO: test
 MATCH
   path =
     (reaction:ReactionLikeEvent)-[:hasEvent*0..7]-

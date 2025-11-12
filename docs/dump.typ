@@ -1,7 +1,4 @@
 // , and the parameters $epsilon, delta in (0, 1)$ for the evalation of the constraints
-// - structural constraints on the reactions' speeds (some reactions are faster
-//     than others) #TODO[I still haven't figured out how to get that information
-//         out of Reactome, maybe I just have to search more]
 
 // #box(
 //     stroke: (y: .25pt),
@@ -76,7 +73,6 @@
 // The bulk of the logic is in the #logic[yield_sbml_model()] function.
 // The idea is to expand a portion of Reactome
 
-// #TODO[this page is far from complete, you can skip to the next one]
 
 // #definition("SBML model")[
 //     A _SBML model_ $G$ is a tuple $(S_T, S, R, E)$ s.t.
@@ -94,8 +90,6 @@
 //         reaction, it also has a stoichiometry)
 //         - $E subset.eq S times R times NN^1$
 //         - $E = E_"reactant" union E_"product" union E_"modifier"$
-//     // - TODO: account for order (edges also have an "order" attribute, I have
-//     //     to check how it impacts the simulation and if it's optional)
 // ]
 
 // #let proj-name = text(font: "LMMonoCaps10", "Bsys_eval")
@@ -105,12 +99,6 @@
 // biological system.
 
 // = proj-name
-// #TODO[
-//     find papers in literature that do similar things; what does this method add
-//     compared to other approaches? (i.e. using multiple pathways by generating
-//     the fixed point, ensemble of SAs etc...)
-// ]
-// #TODO[case studies]
 
 
 // == Requirements

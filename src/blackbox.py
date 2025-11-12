@@ -1,6 +1,9 @@
-from typing import TYPE_CHECKING
+import os
+from typing import TypeAlias
 
 import libsbml
+import numpy as np
+import pylab
 import roadrunner
 from biological_scenarios_generation.core import PartialOrder
 from biological_scenarios_generation.model import (
@@ -9,18 +12,14 @@ from biological_scenarios_generation.model import (
     VirtualPatient,
 )
 
-if TYPE_CHECKING:
-    import numpy as np
-
-# TODO: iper parameters, maybe a class / enum with the actual names
+Trajectory: TypeAlias = np.ndarray[tuple[int, ...], np.dtype[np.float64]]
 
 
-def blackbox(
+def _blackbox(
     document: libsbml.SBMLDocument,
     virtual_patient: VirtualPatient,
-    environment: Environment,
-    constraints: PartialOrder[PhysicalEntity],
-) -> float:
+    species_partial_order: PartialOrder[PhysicalEntity],
+) -> tuple[Trajectory, roadrunner.RoadRunner, float]:
     rr: roadrunner.RoadRunner = roadrunner.RoadRunner(
         libsbml.writeSBMLToString(document)
     )
@@ -28,34 +27,58 @@ def blackbox(
     for k, value in virtual_patient.items():
         rr[k] = value
 
-    result: np.ndarray = rr.simulate(start=0, end=20000, points=1000000)
+    result: Trajectory = rr.simulate(
+        start=int(os.getenv("SIMULATION_START") or 0),
+        end=int(os.getenv("SIMULATION_END") or 1000),
+        points=int(os.getenv("SIMULATION_POINTS") or 100000),
+    )
 
-    normalization_penalty: float = 0.0
+    normalization_loss: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):
         if "time" not in col_name and "mean" not in col_name:
             for concentration in result[:, col_number]:
                 if concentration > 1:
-                    normalization_penalty += concentration - 1
+                    normalization_loss += concentration - 1
                 elif concentration < 0:
-                    normalization_penalty += abs(concentration)
+                    normalization_loss += abs(concentration)
 
-    transitory_penalty: float = 0.0
+    transitory_loss: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):
         if "mean" in col_name:
-            transitory_penalty += abs(
+            transitory_loss += abs(
                 result[-1, col_number] - result[-1000, col_number]
             )
 
-    return float(normalization_penalty + transitory_penalty)
+    return (result, rr, normalization_loss + transitory_loss)
 
-    # import pylab
-    #
-    # time = result[:, 0]
-    # for col_number, col_name in enumerate(rr.timeCourseSelections):
-    #     if "time" not in col_name and "mean" not in col_name:
-    #         # if result[-1, species] <= 1:
-    #         name = col_name
-    #         _ = pylab.plot(time, result[:, col_number], label=str(name))
-    #         _ = pylab.legend()
-    #
-    # pylab.show()
+
+def blackbox(
+    document: libsbml.SBMLDocument,
+    virtual_patient: VirtualPatient,
+    environment: Environment,
+    species_partial_order: PartialOrder[PhysicalEntity],
+) -> float:
+    (_, _, loss) = _blackbox(document, virtual_patient, species_partial_order)
+    return loss
+
+
+def plot_blackbox(
+    document: libsbml.SBMLDocument,
+    virtual_patient: VirtualPatient,
+    environment: Environment,
+    species_partial_order: PartialOrder[PhysicalEntity],
+) -> float:
+    (trajectory, rr, loss) = _blackbox(
+        document, virtual_patient, species_partial_order
+    )
+
+    time = trajectory[:, 0]
+    for col_number, col_name in enumerate(rr.timeCourseSelections):
+        if "time" not in col_name and "mean" not in col_name:
+            name = col_name
+            _ = pylab.plot(time, trajectory[:, col_number], label=str(name))
+            _ = pylab.legend()
+
+    pylab.show()
+
+    return loss

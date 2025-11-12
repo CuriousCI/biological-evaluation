@@ -1,5 +1,6 @@
 import random
 from dataclasses import dataclass
+from enum import StrEnum, auto
 from typing import TypeAlias
 
 import libsbml
@@ -12,10 +13,17 @@ SId: TypeAlias = str
 VirtualPatient: TypeAlias = dict[SId, float]
 
 
+class KineticConstantPurpose(StrEnum):
+    HALF_SATURATION = auto()
+    FORWARD_REACTION = auto()
+    REVERSE_REACTION = auto()
+
+
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class VirtualPatientGenerator:
     """A virtual patient is described by the set of parameters."""
 
+    # kinetic_constants: dict[SId, KineticConstantPurpose]
     kinetic_constants: set[SId]
 
     def __call__(self) -> VirtualPatient:
@@ -24,8 +32,19 @@ class VirtualPatientGenerator:
             if "half" in kinetic_constant or "k_h_" in kinetic_constant
             else 10 ** random.uniform(-20, 20)
             for kinetic_constant in self.kinetic_constants
-            # kinetic_constant: 10 ** random.uniform(-20, 20)
         }
+
+        # return {
+        #     kinetic_constant: pow(
+        #         10,
+        #         (
+        #             random.uniform(-20, 0)
+        #             if purpose == KineticConstantPurpose.HALF_SATURATION
+        #             else random.uniform(-20, 20)
+        #         ),
+        #     )
+        #     for kinetic_constant, purpose in self.kinetic_constants.items()
+        # }
 
 
 Environment: TypeAlias = dict[SId, NormalizedReal]

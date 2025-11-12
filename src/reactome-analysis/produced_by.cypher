@@ -49,11 +49,6 @@ WHERE
   )
 RETURN path;
 
-// TODO: create an index
-// TODO: has_event_2 baby!
-// TODO: what happens when instead of using stIdVersion I use id od dbId?
-// TODO: how much time does it take for the creation of direct edges to work?
-
 MATCH path = (p:PhysicalEntity)<-[:output|input_2|catalyst_2*0..3]-()
 WHERE
   ALL(

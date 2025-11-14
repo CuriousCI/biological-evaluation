@@ -67,7 +67,11 @@ def main() -> None:
         url=OPENBOX_URL,
         task_id=openbox_task_id,
         config_dict=suggestion,
-        objectives=[loss] if loss else [10e20],
+        objectives=[loss]
+        if loss
+        else [
+            len(biological_model.environment_generator.physical_entities) * 2
+        ],
         constraints=[],
         trial_info=trial_info,
         trial_state=SUCCESS if loss else FAILED,

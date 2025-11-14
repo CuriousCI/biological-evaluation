@@ -40,9 +40,14 @@ def _blackbox(
         if "time" not in col_name and "mean" not in col_name:
             points_violating_normalization_constraint: int = 0
             for concentration in result[:, col_number]:
-                if concentration > 1 or concentration < 0:
+                if concentration < 0 or concentration > 1:
                     points_violating_normalization_constraint += 1
 
+            print(
+                points_violating_normalization_constraint,
+                " / ",
+                simulation_points,
+            )
             normalization_loss += float(
                 points_violating_normalization_constraint
             ) / float(simulation_points)
@@ -57,8 +62,12 @@ def _blackbox(
     transitory_loss: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):
         if "mean" in col_name:
-            transitory_loss += abs(
-                result[-1, col_number] - result[-1000, col_number]
+            transitory_loss += min(
+                abs(
+                    result[-1, col_number]
+                    - result[int(simulation_points * (1 / 2)), col_number]
+                ),
+                1,
             )
 
     return (result, rr, normalization_loss + transitory_loss)

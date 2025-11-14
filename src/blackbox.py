@@ -27,23 +27,32 @@ def _blackbox(
     for k, value in virtual_patient.items():
         rr[k] = value
 
+    simulation_start: int = int(os.getenv("SIMULATION_START") or 0)
+    simulation_end: int = int(os.getenv("SIMULATION_END") or 10000)
+    simulation_points: int = int(os.getenv("SIMULATION_POINTS") or 100000)
+
     result: Trajectory = rr.simulate(
-        start=int(os.getenv("SIMULATION_START") or 0),
-        end=int(os.getenv("SIMULATION_END") or 1000),
-        points=int(os.getenv("SIMULATION_POINTS") or 10000),
+        start=simulation_start, end=simulation_end, points=simulation_points
     )
 
     normalization_loss: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):
         if "time" not in col_name and "mean" not in col_name:
+            points_violating_normalization_constraint: int = 0
             for concentration in result[:, col_number]:
                 if concentration > 1 or concentration < 0:
-                    normalization_loss += 1
+                    points_violating_normalization_constraint += 1
 
-                # if concentration > 1:
-                #     normalization_loss += concentration - 1
-                # elif concentration < 0:
-                #     normalization_loss += abs(concentration)
+            normalization_loss += float(
+                points_violating_normalization_constraint
+            ) / float(simulation_points)
+
+            # normalization_loss += 1
+
+            # if concentration > 1:
+            #     normalization_loss += concentration - 1
+            # elif concentration < 0:
+            #     normalization_loss += abs(concentration)
 
     transitory_loss: float = 0.0
     for col_number, col_name in enumerate(rr.timeCourseSelections):

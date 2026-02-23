@@ -1,0 +1,51 @@
+
+// TODO: Z for species of interest
+// TODO: possibility to limit kinetic constants if reaction is in DB
+// internal species // species which are neither inputs or outputs
+// output species of the network
+
+// - $P = U union X union Y$ is the set of *physical entities* of the
+//     biochemical network where $U, X, Y$ are non-disjoint sets
+//     // no reactants,
+//     // no products
+//     - $U$ is the set of physical entities with no reactions that produce
+//         them
+//     - $X$ is the set of physical entities which are involved in reactions as
+//         both a reactants and products
+//     - $Y$ is the set of physical entities
+
+// where $P_"reactant", P_"product"$ are
+//     *non-disjoint* sets where
+//     - $P_"reactant"$ is the set of physical entities involved in reactions
+//         as reactants
+//     - $P_"product"$ is the set of physical entities involved in reactions as
+//         reactants
+// - $P = P_"reactant" union P_"product"$ is the set of *physical entities* of
+//     the biochemical network where $P_"reactant", P_"product"$ are
+//     *non-disjoint* sets where
+//     - $P_"reactant"$ is the set of physical entities involved in reactions
+//         as reactants
+//     - $P_"product"$ is the set of physical entities involved in reactions as
+//         reactants
+// no reactants,
+// no products
+// - $U$ is the set of physical entities with no reactions that produce
+//     them
+// - $X$ is the set of physical entities which are involved in reactions as
+//     both a reactants and products
+// - $Y$ is the set of physical entities
+
+// - $S times C$
+// - $f_C : S -> C$ is the function that determines the compartment of each
+//     species
+
+// With $T $ as
+// the set of roles a physical entitiy can have in a reaction
+
+
+// #note[ not necessary for kinetic laws, necessary for simulation]
+// with
+// #note[Reactions have at most 1 enzyme]
+// TODO: there is at most 1 enzyme per reaction!
+
+// #pagebreak()

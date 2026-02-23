@@ -1,0 +1,477 @@
+
+// ["-none"]	["EntitySet", "CandidateSet"]	286
+// ["-none"]	["EntitySet", "DefinedSet"]	201
+// ["instanceOf"]	["EntitySet", "DefinedSet"]	1
+// ["surroundedBy"]	["EntitySet", "CandidateSet"]	29
+// ["surroundedBy"]	["EntitySet", "DefinedSet"]	129
+// ["surroundedBy"]	["Polymer"]	7
+// ["-none", "surroundedBy"]	["EntitySet", "CandidateSet"]	3
+
+
+// ["surroundedBy"]	["EntitySet", "DefinedSet"]	129
+// ["surroundedBy"]	["EntitySet", "CandidateSet"]	29
+// ["surroundedBy"]	["Polymer"]	7
+// ["none"]	["EntitySet", "DefinedSet"]	201
+// ["none"]	["EntitySet", "CandidateSet"]	286
+// ["instanceOf"]	["EntitySet", "DefinedSet"]	1
+// ["none", "surroundedBy"]	["EntitySet", "CandidateSet"]	3
+
+// CASE size(compartmentsRelated) WHEN 1 THEN ["related"] ELSE [] END +
+// CASE size(compartmentsUnrelated) WHEN 1 THEN ["unrelated"] ELSE [] END
+
+// "WITH rle, ps + COLLECT(DISTINCT CASE pe WHEN NULL THEN NULL ELSE {uniprot: re.identifier, type:'positive'} END) AS ps " +
+
+// WITH
+//     physicalEntity,
+//     CASE (EXISTS { MATCH (compartment1)--(compartment2) })
+//         WHEN true THEN "a"
+//         ELSE "b"
+//     END AS t
+// RETURN physicalEntity, t
+//
+//
+//
+// WITH physicalEntity, type1
+// RETURN physicalEntity.dbId, type1
+//
+// MATCH
+//     (physicalEntity:PhysicalEntity),
+//     (physicalEntity)-[:compartment]->(compartment1:Compartment),
+//     (physicalEntity)-[:compartment]->(compartment2:Compartment)
+// WHERE
+//     compartment1 <> compartment2
+//     AND NOT EXISTS {
+//         MATCH (compartment1)--(compartment2)
+//     }
+// WITH
+//     physicalEntities,
+//     COLLECT(DISTINCT physicalEntity) AS withUnrelatedCompartments
+//
+// MATCH
+//     (physicalEntity:PhysicalEntity),
+//     (physicalEntity)-[:compartment]->(compartment1:Compartment),
+//     (physicalEntity)-[:compartment]->(compartment2:Compartment),
+//     (compartment1)--(compartment2)
+// WHERE
+//     compartment1 <> compartment2
+// WITH
+//     physicalEntities,
+//     withUnrelatedCompartments,
+//     COLLECT(DISTINCT physicalEntity) AS withRelatedCompartments
+//
+// UNWIND physicalEntities AS physicalEntity
+// RETURN
+//     apoc.coll.subtract(
+//         labels(physicalEntity),
+//         ["DatabaseObject", "Deletable", "Trackable", "PhysicalEntity"]
+//     ),
+//     CASE
+//         WHEN
+//             physicalEntity IN withRelatedCompartments
+//             AND physicalEntity IN withUnrelatedCompartments
+//         THEN
+//             ["related", "unrelated"]
+//         WHEN physicalEntity IN withRelatedCompartments THEN ["related"]
+//         WHEN physicalEntity IN withUnrelatedCompartments THEN ["unrelated"]
+//         ELSE []
+//     END AS type,
+//     COUNT(*)
+
+
+// MATCH
+//     (physicalEntity:PhysicalEntity),
+//     (physicalEntity)-[:compartment]->(compartment1:Compartment),
+//     (physicalEntity)-[:compartment]->(compartment2:Compartment)
+// WHERE
+//     compartment1 <> compartment2
+// WITH physicalEntity, COLLECT(DISTINCT compartment1) AS compartments1, COLLECT(DISTINCT compartment2) AS compartments2
+// WITH physicalEntity, compartments1, compartments2,
+//      (CASE WHEN NONE(comp1 IN compartments1 WHERE comp1--(c:Compartment)) THEN 'unrelated' ELSE 'related' END) AS compartmentStatus
+// WITH physicalEntity, compartmentStatus
+// UNWIND [compartmentStatus] AS type
+// RETURN
+//     apoc.coll.subtract(labels(physicalEntity), ["DatabaseObject", "Deletable", "Trackable", "PhysicalEntity"]),
+//     type,
+//     COUNT(*)
+
+///
+
+
+// #figure(
+//     ```
+//     MATCH
+//         (physicalEntity:PhysicalEntity),
+//         (physicalEntity)-[:compartment]->(compartment1:Compartment),
+//         (physicalEntity)-[:compartment]->(compartment2:Compartment)
+//     WHERE
+//         compartment1 <> compartment2
+//         AND NOT EXISTS {
+//             MATCH (compartment1)--(compartment2)
+//         }
+//     WITH DISTINCT physicalEntity
+//     RETURN labels(physicalEntity), COUNT(*)
+//     ```,
+//     caption: [
+//         Types of physical entities associated with multiple compartments where
+//         at least two compartments are not related.
+//     ],
+// )
+//
+// #align(center, table(
+//     columns: (auto, auto),
+//     align: (left, center),
+//     `[.., "PhysicalEntity", "EntitySet", "DefinedSet"]`, `201`,
+//     `[.., "PhysicalEntity", "EntitySet", "CandidateSet"]`, `289`,
+// ))
+//
+// In the case above it happens that `3` `CandidateSet`s that have both related and
+// unrelated compartments.
+// #figure(
+//     ```
+//     MATCH
+//         (physicalEntity:PhysicalEntity),
+//         (physicalEntity)-[:compartment]->(compartment1:Compartment),
+//         (physicalEntity)-[:compartment]->(compartment2:Compartment),
+//         (compartment1)-[link]->(compartment2)
+//     WHERE
+//         compartment1 <> compartment2
+//     RETURN type(link), COUNT(*)
+//     ```,
+//     caption: [
+//         Types of links between the compartments where a physical entity has
+//         multiple compartments which are related.
+//     ],
+// )
+//
+// #align(center, table(
+//     columns: (auto, auto),
+//     align: (left, center),
+//     `"surroundedBy"`, `168`,
+//     `"instanceOf"`, `1`,
+// ))
+
+// TODO: venn diagram
+
+// - `[.., "PhysicalEntity", "Polymer"], 7`
+// - `[.., "PhysicalEntity", "EntitySet", "DefinedSet"], 331`
+// - `[.., "PhysicalEntity", "EntitySet", "CandidateSet"], 318`
+
+// TODO:
+// MATCH (physicalEntity:PhysicalEntity)
+// WHERE EXISTS {
+//     MATCH
+//         (physicalEntity)-[:compartment]->(compartment1:Compartment),
+//         (physicalEntity)-[:compartment]->(compartment2:Compartment)
+//     WHERE
+//         compartment1 <> compartment2
+//         AND NOT EXISTS {
+//             MATCH (compartment1)--(compartment2)
+//         }
+//         AND EXISTS {
+//             MATCH
+//                 (physicalEntity)-[:compartment]->(compartment3:Compartment),
+//                 (physicalEntity)-[:compartment]->(compartment4:Compartment),
+//                 (compartment3)--(compartment4)
+//             WHERE
+//                 compartment3 <> compartment4
+//         }
+// }
+// WITH DISTINCT physicalEntity
+// RETURN labels(physicalEntity), COUNT(*)
+
+// \
+//
+// #figure(
+//     ```
+//     MATCH (physicalEntity:PhysicalEntity)
+//     WHERE EXISTS {
+//         MATCH
+//             (physicalEntity)-[:compartment]-(compartment1:Compartment),
+//             (physicalEntity)-[:compartment]-(compartment2:Compartment)
+//         WHERE
+//             compartment1 <> compartment2
+//             AND NOT EXISTS {
+//                 MATCH (compartment1)-[:surroundedBy]-(compartment2)
+//             }
+//     }
+//     RETURN COUNT(DISTINCT physicalEntity) // 491
+//     ```,
+//     caption: [
+//         Entities with multiple compartments where one compartment is not
+//         `[:surroundedBy]` the other
+//     ],
+// )
+
+// #figure(
+//     ```
+//     MATCH (physicalEntity:PhysicalEntity)
+//     WHERE
+//         EXISTS {
+//             MATCH
+//                 (physicalEntity)-[:compartment]-(compartment1:Compartment),
+//                 (physicalEntity)-[:compartment]-(compartment2:Compartment)
+//             WHERE
+//                 compartment1 <> compartment2
+//                 AND NOT EXISTS {
+//                     MATCH (compartment1)-[:surroundedBy]-(compartment2)
+//                 }
+//         }
+//         AND "EntitySet" IN labels(physicalEntity)
+//     RETURN COUNT(DISTINCT physicalEntity) // 491
+//     ```,
+//     caption: [
+//         Entities with multiple unrelated compartments which are entity-sets (how
+//         do I treat these?)
+//     ],
+// )
+
+*EntitySet [superclass]*
+- Used to maintain logical integrity of data model, not used for manual
+    annotation. Two or more PhysicalEntities grouped because of a shared
+    molecular feature or function. The superclass for CandidateSet and
+    DefinedSet. While sets are, by default, homogeneous (members having the same
+    subclass of PhysicalEntity), they are not required to be. For example, the
+    defined set platelet alpha granule contents contains, as members,
+    EntitiesWithAccessionedSequences, Complexes and Sets.
+
+#figure(
+    ```
+    MATCH (reaction:ReactionLikeEvent)-[:input|output]-(:EntitySet)
+    RETURN COUNT (DISTINCT reaction) // 22576
+    ```,
+)
+
+*CandidateSet*
+- A collection of physical entities that are functionally indistinguishable for
+    the purpose of Reactome annotation, some of which are well-characterized
+    (the “members” of the set) and some of which are incompletely characterized
+    (the “candidates” of the set), as judged by the curator who assembles the
+    set and the outside expert reviewers who evaluate it. Members of a set are
+    related by an "OR" function. That is, either one member OR another member
+    can participate in a reaction.
+- Sets may be ordered or unordered as specified in the isOrdered attribute. A
+    specific member of an ordered set has a correspondence with a specific
+    member of another ordered set, as specified by their positions within the
+    sets. For example, consider an ordered set containing substrate1 and
+    substrate2 that reacts to yield an ordered set containing product1 and
+    product2. In this case, substrate1 will yield product1 and substrate2 will
+    yield product2. In the case of unordered sets, any member in an input set
+    can correspond to any member in an output set. Sets in Reactome are
+    considered ordered by default.
+
+
+*DefinedSet*
+- A collection of well-characterized physical entities that are functionally
+    indistinguishable for the purpose of Reactome annotation, e.g., a collection
+    of isoforms of a protein that all mediate the identical metabolic reaction.
+    A set is formally a list of instances linked by logical ORs. Sets may be
+    ordered or unordered as specified in the isOrdered attribute. A specific
+    member of an ordered set has a correspondence with a specific member of
+    another ordered set, as specified by their positions within the sets. For
+    example, consider an ordered set containing substrate1 and substrate2 that
+    reacts to yield an ordered set containing product1 and product2. In this
+    case, substrate1 will yield only product1 and substrate2 will yield only
+    product2. In the case of unordered sets, any member in an input set can
+    correspond to any member in an output set. Sets in Reactome are considered
+    ordered by default.
+
+#figure(
+    ```
+    MATCH (physicalEntity:PhysicalEntity)
+    WHERE
+        EXISTS {
+            MATCH
+                (physicalEntity)-[:compartment]-(compartment1:Compartment),
+                (physicalEntity)-[:compartment]-(compartment2:Compartment)
+            WHERE
+                compartment1 <> compartment2
+                AND NOT EXISTS {
+                    MATCH (compartment1)-[:surroundedBy]-(compartment2)
+                }
+        }
+        AND EXISTS {
+            MATCH (reaction:ReactionLikeEvent)--(physicalEntity)
+        }
+    RETURN COUNT(DISTINCT physicalEntity) // 310
+    ```,
+    caption: [
+        Set of entities with multiple compartments connected to at least a
+        reaction
+    ],
+)
+
+#figure(
+    ```
+    MATCH
+        path1 = (reaction {dbId: 177941})-[:input|output]-(entity1:PhysicalEntity)
+    OPTIONAL MATCH path2 = (reaction)--(:CatalystActivity)--(:PhysicalEntity)
+    OPTIONAL MATCH path3 = (entity1)--(:Compartment)
+    RETURN path1, path2, path3
+    ```,
+    caption: [
+        Example reaction that involves entities with multiple compartments
+    ],
+)
+
+// #figure(
+//     ```
+//     MATCH (reaction:ReactionLikeEvent)
+//     WHERE EXISTS {
+//         MATCH
+//             (reaction)--(compartment1:Compartment),
+//             (reaction)--(compartment2:Compartment)
+//         WHERE
+//             compartment1 <> compartment2
+//             AND NOT EXISTS {
+//                 MATCH (compartment1)-[:surroundedBy]-(compartment2)
+//             }
+//     }
+//     RETURN COUNT (DISTINCT reaction) // 20974
+//     ```,
+//     caption: [
+//         Reactions connected to multiple compartments excluding "surroundedBy"
+//     ],
+// )
+//
+// #figure(
+//     ```
+//     MATCH (reaction:ReactionLikeEvent)
+//     WHERE EXISTS {
+//         MATCH
+//             (reaction)--(compartment1:Compartment),
+//             (reaction)--(compartment2:Compartment)
+//         WHERE
+//             compartment1 <> compartment2
+//             AND NOT EXISTS {
+//                 MATCH (compartment1)--(compartment2)
+//             }
+//     }
+//     RETURN COUNT (DISTINCT reaction) 20833 (if you remove :surroundedBy)
+//     ```,
+//     caption: [
+//         https://reactome.org/PathwayBrowser/#/R-HSA-9646399&FLG=R-HSA-9640114&FLGINT
+//     ],
+// )
+// #figure(
+//     ```
+//     MATCH (reaction:ReactionLikeEvent)
+//     WHERE EXISTS {
+//         MATCH
+//             (reaction)--(compartment1:Compartment),
+//             (reaction)--(compartment2:Compartment)
+//         WHERE
+//             compartment1 <> compartment2
+//             AND NOT EXISTS {
+//                 MATCH (compartment1)-[:surroundedBy]-(compartment2)
+//             }
+//             AND EXISTS {
+//                 MATCH (compartment1)--(compartment2)
+//             }
+//     }
+//     RETURN COUNT (DISTINCT reaction) // 189 "componentOf"
+//     ```,
+// )
+//
+// #figure(
+//     ```
+//     MATCH (:Compartment)-[relation]-(:Compartment)
+//     RETURN DISTINCT type(relation)
+//     ```,
+// )
+
+
+// #figure(
+//     ```
+//     MATCH (physicalEntity:PhysicalEntity)
+//     WHERE EXISTS {
+//         MATCH
+//             (physicalEntity)--(compartment1:Compartment),
+//             (physicalEntity)--(compartment2:Compartment)
+//         WHERE
+//             compartment1 <> compartment2
+//     }
+//     RETURN COUNT(DISTINCT physicalEntity) // 6347
+//     ```,
+//     caption: [
+//         Entities connected to multiple compartments
+//     ],
+// )
+
+// \
+
+// #figure(
+//     ```
+//     MATCH (:PhysicalEntity)-[relation]-(:Compartment)
+//     RETURN DISTINCT type(relation)
+//     ```,
+//     caption: [
+//         Types of relation between physical entities and compartments:
+//         `["compartment", "includedLocation", "goCellularComponent"]`
+//     ],
+// )
+
+// Complexes with components that span multiple cellular locations should specify
+// one primary location as the compartment and the location of the other components
+// will be automatically filled into the “includedLocation” attribute during the
+// database release process. For example, a transmembrane complex with components
+// in the extracellular space, plasma membrane, and cytosol would have plasma
+// membrane specified as the compartment.
+//
+// \
+
+// #figure(
+//     ```
+//     MATCH (physicalEntity:PhysicalEntity)
+//     WHERE EXISTS {
+//         MATCH
+//             (physicalEntity)-[:compartment]->(compartment1:Compartment),
+//             (physicalEntity)-[:compartment]->(compartment2:Compartment)
+//         WHERE
+//             compartment1 <> compartment2
+//     }
+//     RETURN COUNT(DISTINCT physicalEntity) // 656
+//     ```,
+//     caption: [
+//         Number of physical entities associated with multiple distinct
+//         compartments.
+//     ],
+// )
+
+// Entities with multiple compartments only using the `[:compartment]`
+// relation
+
+// #figure(
+//     ```
+//     MATCH
+//         (physicalEntity:PhysicalEntity),
+//         (physicalEntity)-[:compartment]->(compartment1:Compartment),
+//         (physicalEntity)-[:compartment]->(compartment2:Compartment)
+//     WHERE
+//         compartment1 <> compartment2
+//     WITH DISTINCT physicalEntity
+//     RETURN labels(physicalEntity), COUNT(*)
+//     ```,
+//     caption: [
+//         Types of physical entities associated with multiple compartments.
+//     ],
+// )
+//
+// #align(center, table(
+//     columns: (auto, auto),
+//     align: (left, center),
+//     `[.., "PhysicalEntity", "Polymer"]`, `7`,
+//     `[.., "PhysicalEntity", "EntitySet", "DefinedSet"]`, `331`,
+//     `[.., "PhysicalEntity", "EntitySet", "CandidateSet"]`, `318`,
+// ))
+//
+// Some of these physical entities have either:
+// - compartments which are related (by the `surroundedBy` relation or the
+//     `instanceOf` relation)
+// - compartments which are not related at all
+// - both cases (`3` `CandidateSet` instances)
+
+// #note[Is it "species" a good name? Reactome uses `PhysicalEntity` because to
+//     Reactome `Species` indicates the organism studied (human, rat, etc...). In
+//     some papers I read the terms "substrate" (when referring to reactions) and
+//     "species" are used (I will stick with it).
+// ]

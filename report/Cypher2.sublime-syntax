@@ -1,0 +1,135 @@
+%YAML 1.2
+---
+name: Cypher (openCypher)
+scope: source.cypher
+file_extensions:
+  - cypher
+  - cql
+
+contexts:
+  main:
+    - include: statements
+    - include: expressions
+    - include: literals
+    - include: identifiers
+
+  statements:
+    - match: \b(MATCH|OPTIONAL|UNWIND|WITH|RETURN|CREATE|MERGE|SET|REMOVE|DELETE|DETACH|CALL)\b
+      scope: keyword.control.cypher
+    - include: patterns
+    - include: expressions
+
+  patterns:
+    - match: '\('
+      scope: punctuation.section.group.begin.cypher
+      push: node-pattern
+    - match: '-'
+      scope: punctuation.separator.path.cypher
+    - match: '<-|->|<-|->'
+      scope: keyword.operator.relationship.cypher
+    - match: '
+
+\['
+      scope: punctuation.section.brackets.begin.cypher
+      push: relationship-pattern
+
+  node-pattern:
+    - meta_scope: meta.node.cypher
+    - match: '\)'
+      scope: punctuation.section.group.end.cypher
+      pop: true
+    - include: labels
+    - include: properties
+    - include: identifiers
+
+  relationship-pattern:
+    - meta_scope: meta.relationship.cypher
+    - match: '\]
+
+'
+      scope: punctuation.section.brackets.end.cypher
+      pop: true
+    - include: labels
+    - include: properties
+    - include: identifiers
+
+  labels:
+    - match: ':[A-Za-z_][A-Za-z0-9_]*'
+      scope: entity.name.type.label.cypher
+
+  properties:
+    - match: '\{'
+      scope: punctuation.section.mapping.begin.cypher
+      push: property-map
+
+  property-map:
+    - meta_scope: meta.mapping.cypher
+    - match: '\}'
+      scope: punctuation.section.mapping.end.cypher
+      pop: true
+    - match: '[A-Za-z_][A-Za-z0-9_]*\s*:'
+      scope: meta.mapping.key.cypher
+    - include: expressions
+    - include: literals
+
+  expressions:
+    - match: '\$[A-Za-z_][A-Za-z0-9_]*'
+      scope: variable.parameter.cypher
+    - match: '\b(AND|OR|XOR|NOT|IN|IS|NULL|CONTAINS|STARTS\s+WITH|ENDS\s+WITH)\b'
+      scope: keyword.operator.logical.cypher
+    - match: '[+\-*/%]'
+      scope: keyword.operator.arithmetic.cypher
+    - match: '='
+      scope: keyword.operator.assignment.cypher
+    - match: '<>|!=|<=|>=|<|>'
+      scope: keyword.operator.comparison.cypher
+    - include: functions
+    - include: literals
+    - include: identifiers
+
+  functions:
+    - match: '\b[A-Za-z_][A-Za-z0-9_]*\s*(?=\()'
+      scope: support.function.cypher
+      push: function-call
+
+  function-call:
+    - meta_scope: meta.function-call.cypher
+    - match: '\)'
+      scope: punctuation.section.group.end.cypher
+      pop: true
+    - match: '\('
+      scope: punctuation.section.group.begin.cypher
+      push: function-call
+    - include: expressions
+    - include: literals
+
+  literals:
+    - match: '\b(TRUE|FALSE)\b'
+      scope: constant.language.boolean.cypher
+
+    - match: '\bNULL\b'
+      scope: constant.language.null.cypher
+
+    - match: "\"(?:[^\"\\\\]|\\\\.)*\""
+      scope: string.quoted.double.cypher
+
+    - match: "'(?:[^'\\\\]|\\\\.)*'"
+      scope: string.quoted.single.cypher
+
+    - match: '\b\d+(?:\.\d+)?(?:[eE][+-]?\d+)?\b'
+      scope: constant.numeric.cypher
+
+
+  list-literal:
+    - meta_scope: meta.sequence.cypher
+    - match: '\]
+
+'
+      scope: punctuation.section.sequence.end.cypher
+      pop: true
+    - include: expressions
+    - include: literals
+
+  identifiers:
+    - match: '\b[A-Za-z_][A-Za-z0-9_]*\b'
+      scope: variable.other.cypher

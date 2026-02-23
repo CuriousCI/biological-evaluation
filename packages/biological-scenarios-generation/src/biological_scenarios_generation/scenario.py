@@ -110,6 +110,25 @@ KineticLaw: TypeAlias = Callable[
     [libsbml.Model, ReactionLikeEvent, dict[SId, ConstantCategory]], MathML
 ]
 
+# biochemical
+# network
+# closure
+# builder
+# exporter
+
+# problem
+# network
+# kernel
+# definition
+
+# biological
+# scenario
+# geneartion
+
+# biological
+# network
+# generation
+
 
 @dataclass(init=True, repr=False, eq=False, order=False, frozen=True)
 class BiologicalScenarioDefinition:
@@ -570,6 +589,7 @@ class BiologicalScenarioDefinition:
 
             # If the species is involved in a reaction of the network then
             # its mean needs to be computed.
+
             sbml_species_mean: libsbml.Parameter = sbml_model.createParameter()
             sbml_species_mean.setId(f"mean_{obj}")
             other_parameters[sbml_species_mean.getId()] = (
@@ -678,9 +698,9 @@ class BiologicalScenarioDefinition:
                         )
                     reaction_like_events_order.add((modifier.id, obj.id))
 
-        # All reactions that have a modifier as product are slower than
-        # reactions that are modified.
         kinetic_constants_order: PartialOrder[SId] = set()
+
+        # All reactions that have a modifier as product are slower than reactions that are modified.
         for reaction_1, reaction_2 in reaction_like_events_order:
             for kinetic_constant_1 in kinetic_constants:
                 if str(reaction_1) in kinetic_constant_1 and (

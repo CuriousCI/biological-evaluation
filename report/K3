@@ -1,0 +1,185 @@
+
+=== Species which are both inputs and outputs of a reaction
+
+```
+MATCH (reaction:ReactionLikeEvent)-[:input]->(entity:PhysicalEntity)
+WHERE EXISTS {
+    MATCH (reaction)-[:output]->(entity)
+}
+RETURN COUNT(n) // 1062
+```
+
+\
+
+```
+MATCH (n:ReactionLikeEvent)-[:input]->(p:PhysicalEntity)
+WHERE EXISTS {
+    MATCH (n)-[:output]->(p), (m)-[:output]->(p)
+    WHERE n <> m
+}
+RETURN COUNT (n) // 895
+```
+
+\
+
+```
+MATCH (n:ReactionLikeEvent)-[:input]->(p:PhysicalEntity)
+WHERE EXISTS {
+    MATCH (n)-[:output]->(p), (n)-[:output]->(q)
+    WHERE p <> q
+}
+RETURN COUNT (n) // 741
+```
+
+\
+
+```
+MATCH (n:ReactionLikeEvent)-[r1:input]->(p:PhysicalEntity)
+WHERE EXISTS {
+    MATCH (n)-[r2:output]->(p), (n)-[:output]->(q)
+    WHERE
+        p <> q
+        AND r1.stoichiometry <> r2.stoichiometry
+}
+RETURN COUNT (n) // 36
+```
+
+\
+
+Di queste 36, 24 sono "electron transfer"
+
+```
+MATCH (n:ReactionLikeEvent)-[r1:input]->(p:PhysicalEntity)
+WHERE EXISTS {
+    MATCH (n)-[r2:output]->(p), (n)-[:output]->(q)
+    WHERE
+        p <> q
+        AND r1.stoichiometry <> r2.stoichiometry
+}
+AND NOT n.displayName STARTS WITH 'Electron transfer'
+RETURN COUNT (n) // 12
+```
+
+```cyp
+MATCH (r:ReactionLikeEvent)
+WHERE EXISTS {
+    MATCH (r)--(c1:CatalystActivity), (r)--(c2:CatalystActivity)
+    WHERE c1 <> c2
+}
+RETURN COUNT (DISTINCT r) // 17
+```
+
+```cyp
+MATCH path = ({dbId: 983702})--(:CatalystActivity)
+RETURN path
+```
+
+
+\
+
+Of these 12:
+- 11: "CYP19A1 hydroxylates ANDST to E1"
+- 1: "Prdm9 Trimethylates Histone H3 (murine, bovine)"
+
+// GenomeEncodedEntity
+// Any informational macromolecule (DNA, RNA, protein) or entity derived from one by
+// post-synthetic modifications, for example, covalently modified forms of proteins.
+// GenomeEncodedEntity is a subclass of PhysicalEntity and has one subclass:
+// EntityWithAccessionedSequence. Unlike an EntityWithAccessionedSequence, a
+// GenomeEncodedEntity is not required to have a reference entity, though a reference to an entity
+// in a database can be specified in the crossReference attribute.
+
+=== Modifiers which are both positive and negative regulators
+
+Reactions that are driven by an enzyme are described as requiring a catalyst
+activity, modeled in Reactome by linking the macromolecule that provides the
+activity to the GO molecular function term [10,11] that describes the activity.
+In addition, the Reactome data model allows reactions to be modulated by
+positive and negative regulatory factors. When a precise regulatory mechanism
+('positive allosteric regulation', 'noncompetitive inhibition') is known, this
+information is captured.
+
+```
+MATCH (reaction:ReactionLikeEvent)
+WHERE EXISTS {
+    MATCH
+        (reaction)-[:catalystActivity]->
+            (:CatalystActivity)-[:physicalEntity]->(enzyme),
+        (reaction)-[:regulatedBy]->
+            (:NegativeRegulation)-[:regulator]->(inhibitor)
+    WHERE enzyme = inhibitor
+}
+RETURN COUNT(DISTINCT reaction) // 4
+```
+
+\
+
+```
+MATCH (reaction:ReactionLikeEvent)
+WHERE EXISTS {
+    MATCH
+        (reaction)-[:regulatedBy]->
+            (:PositiveRegulation)-[:regulator]->(enzyme),
+        (reaction)-[:regulatedBy]->
+            (:NegativeRegulation)-[:regulator]->(inhibitor)
+    WHERE enzyme = inhibitor
+}
+RETURN COUNT(DISTINCT reaction) // 4
+```
+
+\
+
+```
+MATCH
+    (reaction:ReactionLikeEvent),
+    path1 = (reaction)-[:catalystActivity]->
+            (:CatalystActivity)-[:physicalEntity]->(),
+    path2 = (reaction)-[:regulatedBy]->
+        (:NegativeRegulation)-[:regulator]->()
+WHERE
+    reaction.dbId IN [164341, 164087, 164136, 164055]
+RETURN path1, path2
+UNION
+MATCH
+    (reaction:ReactionLikeEvent),
+    path1 = (reaction)-[:regulatedBy]->
+        (:PositiveRegulation)-[:regulator]->(),
+    path2 = (reaction)-[:regulatedBy]->
+        (:NegativeRegulation)-[:regulator]->()
+WHERE
+    reaction.dbId IN [8950347, 10181912, 10290972, 10761215]
+RETURN path1, path2
+```
+- top ones are all in either _"Mus musculus"_ or in _"Rattus norvegicus"_
+- bottom ones are basically the same reaction, but inferred to multiple species
+
+=== Enzymes which are substrate too
+
+#figure(
+    ```
+    MATCH (reaction:ReactionLikeEvent)
+    WHERE
+        EXISTS {
+            MATCH
+                (reaction)--(:CatalystActivity)--(entity:PhysicalEntity),
+                (reaction)--(entity)
+        }
+    RETURN COUNT(DISTINCT reaction) // 10650
+    ```,
+    caption: [Enzymes which are also involved in the reaction],
+)
+
+#figure(
+    ```
+    MATCH (reaction:ReactionLikeEvent)
+    WHERE
+        EXISTS {
+            MATCH
+                (reaction)--(:CatalystActivity)--(entity:PhysicalEntity),
+                (reaction)-[:input|output]-(entity)
+        }
+    RETURN COUNT(DISTINCT reaction) // 10639
+    ```,
+    caption: [Enzymes which are either inputs or outputs of the reaction],
+)
+

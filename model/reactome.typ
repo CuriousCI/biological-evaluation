@@ -1,6 +1,7 @@
 #import "lib.typ": *
 
 #set page(margin: 1in)
+
 = Reactome quirks
 
 == Compartments
@@ -1037,4 +1038,4 @@ Non of them give information about the "reversibility" of the reaction.
 //     This can already be done in the current version of the code, but the only
 //     rate law supported is the Mass Action rule.
 // ]
-/
+

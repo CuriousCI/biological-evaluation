@@ -1,0 +1,79 @@
+requirements
+parametri molti
+avere un virtual patient decente (un possibile)
+figura + pagina intera (abstract)
+complessità tecnica
+
+
+motivazioni
+
+introduzione:
+1. framework (dentro a cui a ci muoviamo, biological system, repository etc..)
+2. motivation (perché lo facciamo e come lo facciamo, quali sono i problemi in silico trial)
+3. contribution
+
+formalizzazione (formal framework)
+
+parte tecnica
+
+esperimenti
+
+----
+
+Preliminaries -> Notation
+    - add disjoint notation
+
+
+R_0+
+N_+
+
+
+(pag 5. correct c: X -> C, "compartment" not "reaaction", assigns a compartment to each entity)
+"trickier situation" -> "trickier situations"
+
+"on" -> "one"
+"it's" -> "it is"
+coerenza: virtual patient è quello che tiro fuori
+data una rete biochimica con tutto definito (c, n) +
+semi-quantitative(not qualitative)
+we are going to define via (un po' dispersivo)
+law of mass action pensata per reversibili, ma noi non le abbiamo 
+noi estendiamo la law of mass action
+
+Law of mass action -> encoding the dynamics of the biologial network into
+concentrazione per ogni specie, rate per ogni rezione
+nelle letteratura etc...
+
+numerare sezioni di terzo livello
+
+sapthesis -> book (number of sections, even for third level)
+
+3. no other reaction is in R'
+"such that" -> "as follows" after R'
+
+
+indicators -> define a function
+- togliere le quadre dalla concentrazione (x grassetto vettore delle variabili di stato)
+- la mia rete quantitativa
+
+- i piccolo, traiettori che ad ogni istante di tempo associa un valore a ogni variabile x
+- usa solo <=, confrontare due indicatore e un reale, tutte parziali
+
+after phi * T time
+
+aggiungo queste funzioni alla simulazione equazione differenziale che tirata fuori
+traiettori -> scatola calcola indicatori
+
+monitor -> guarda la traiettoria e tira fuori i valori per gli indicatori
+notate che il modello è parametrico nelle K
+esprimo dei vincoli su k e indicatori
+
+variabili di decisione dipendenti (da i)
+variabili funzionalmente dipendenti dalle altre
+i generate da monitor a valle delle simulazioni
+
+
+phi -> tau
+virtual patient 
+i_x -> x(0) (x grassetto di 0)
+

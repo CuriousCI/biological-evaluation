@@ -40,11 +40,13 @@ Notation preliminaries:
 
 #include "optimize.typ"
 
-// #pagebreak()
-//
-// #include "q2a.typ"
+#pagebreak()
 
-// #include "reactome.typ"
+#include "q2a.typ"
+
+#pagebreak()
+
+#include "reactome.typ"
 
 // ```
 // MATCH (reaction:ReactionLikeEvent)
